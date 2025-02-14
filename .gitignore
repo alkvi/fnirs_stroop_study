@@ -1,5 +1,5 @@
 *.Rdata
 *.Rhistory
 data
-*.html
+./*.html
 etc

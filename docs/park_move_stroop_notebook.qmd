@@ -133,12 +133,12 @@ Code block - load data files
 
 # Load and prepare all data
 
-var_data_path <- "../Park-MOVE_fnirs_dataset_v2/IMU_data/imu_variability_parameters.csv"
-gait_path <- "../Park-MOVE_fnirs_dataset_v2/IMU_data//imu_gait_parameters.csv"
-time_file <- paste("../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_answer_time.csv", sep="")
-demo_file <- paste("../Park-MOVE_fnirs_dataset_v2/basic_demographics.csv", sep="")
-redcap_file <- paste("../Park-MOVE_fnirs_dataset_v2/REDcap_data/All_REDcap_data.csv", sep="")
-acc_file <- paste("../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_accuracy.csv", sep="")
+var_data_path <- "../../Park-MOVE_fnirs_dataset_v2/IMU_data/imu_variability_parameters.csv"
+gait_path <- "../../Park-MOVE_fnirs_dataset_v2/IMU_data//imu_gait_parameters.csv"
+time_file <- paste("../../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_answer_time.csv", sep="")
+demo_file <- paste("../../Park-MOVE_fnirs_dataset_v2/basic_demographics.csv", sep="")
+redcap_file <- paste("../../Park-MOVE_fnirs_dataset_v2/REDcap_data/All_REDcap_data.csv", sep="")
+acc_file <- paste("../../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_accuracy.csv", sep="")
 
 # Which ROI?
 selected_roi <- "PFC"
@@ -150,11 +150,11 @@ corr_method <- "pearson"
 filter_subjects <- c("NA")
 
 ### Identifiers
-csv_path <- paste("../Park-MOVE_fnirs_dataset_v2/identifiers_YA.csv", sep="")
+csv_path <- paste("../../Park-MOVE_fnirs_dataset_v2/identifiers_YA.csv", sep="")
 identifiers_ya <- read.csv(csv_path)
-csv_path <- paste("../Park-MOVE_fnirs_dataset_v2/identifiers_OA.csv", sep="")
+csv_path <- paste("../../Park-MOVE_fnirs_dataset_v2/identifiers_OA.csv", sep="")
 identifiers_oa <- read.csv(csv_path)
-csv_path <- paste("../Park-MOVE_fnirs_dataset_v2/identifiers_PD.csv", sep="")
+csv_path <- paste("../../Park-MOVE_fnirs_dataset_v2/identifiers_PD.csv", sep="")
 identifiers_pd <- read.csv(csv_path)
 
 
@@ -698,7 +698,7 @@ The group-level results (output from linear models) is exported to csv and read 
 
 
 # Load fNIRS model results
-group_stats_file <- "data/results_table_cbsi_protocol_1.csv"
+group_stats_file <- "../data/results_table_cbsi_protocol_1.csv"
 group_stats <- read.csv(group_stats_file)
 group_stats <- group_stats %>%
   select(-AIC, -BIC, -formula, -type, -ROI, -q) %>%

@@ -45,7 +45,7 @@ files <- c("model_aim1_oa",
 # Loop through each file
 for (file in files) {
   
-  folder = "data/model_eval/"
+  folder = "../data/model_eval/"
   coeff_file = paste(folder, file, "_estimates.csv", sep="")
   data_file = paste(folder, file, "_data.csv", sep="")
   formula_file = paste(folder, file, "_formula.txt", sep="")
