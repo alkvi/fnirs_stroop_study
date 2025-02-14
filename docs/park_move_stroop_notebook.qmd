@@ -346,6 +346,7 @@ as_data_wide <- as_data_wide[!as_data_wide$group == 'YA', ]
 
 # Split into different groups
 all_subject_data <- merge(all_subject_data, all_gait_data, by = "subject", all = TRUE)
+all_subject_data <- merge(all_subject_data, as_data_wide[c("subject", "dt_cost_stroop_time")], by = "subject", all = TRUE)
 all_subject_data <- subset(all_subject_data, select = -c(group.y))
 names(all_subject_data)[names(all_subject_data) == 'group.x'] <- 'group'
 ya_data <- all_subject_data[all_subject_data$group == 'YA', ]
@@ -842,6 +843,61 @@ table_aim_2_3 %>%
 ```
 
 ## Results, aim 3
+
+### Behavioral
+
+:::{.column-page}
+```{r}
+#| warning: false
+
+## TMT4 - DT cost
+
+gg_point_1 = ggplot(data = oa_data, aes(x = tmt_4, y = dt_cost_walk_speed_protocol1)) +
+  geom_point_interactive(aes(tooltip = subject, data_id = subject), color="red") +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  stat_cor(label.y = 14, method = corr_method, size = 4) +
+  coord_cartesian(xlim =c(20,230), ylim = c(-10, 15)) +
+  labs(x = "TMT-B", y = "DT cost speed (%)", title = "OA") +
+  geom_hline(yintercept=0, linetype="dashed", color = "black") +
+  theme_minimal()
+
+gg_point_2 = ggplot(data = pd_data, aes(x = tmt_4, y = dt_cost_walk_speed_protocol1)) +
+  geom_point_interactive(aes(tooltip = subject, data_id = subject), color = "green") +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  stat_cor(label.y = 14, method = corr_method, size = 4) +
+  coord_cartesian(xlim =c(20,230), ylim = c(-10, 15)) +
+  labs(x = "TMT-B", y = "DT cost speed (%)", title = "PD") +
+  geom_hline(yintercept=0, linetype="dashed", color = "black") +
+  theme_minimal()
+
+## TMT4 - stoop DT cost
+
+gg_point_3 = ggplot(data = oa_data, aes(x = tmt_4, y = dt_cost_stroop_time)) +
+  geom_point_interactive(aes(tooltip = subject, data_id = subject), color="red") +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  stat_cor(label.y = 14, method = corr_method, size = 4) +
+  coord_cartesian(xlim =c(20,230), ylim = c(-10, 15)) +
+  labs(x = "TMT-B", y = "DT cost stroop (%)", title = "OA") +
+  geom_hline(yintercept=0, linetype="dashed", color = "black") +
+  theme_minimal()
+
+gg_point_4 = ggplot(data = pd_data, aes(x = tmt_4, y = dt_cost_stroop_time)) +
+  geom_point_interactive(aes(tooltip = subject, data_id = subject), color = "green") +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  stat_cor(label.y = 14, method = corr_method, size = 4) +
+  coord_cartesian(xlim =c(20,230), ylim = c(-10, 15)) +
+  labs(x = "TMT-B", y = "DT cost stroop (%)", title = "PD") +
+  geom_hline(yintercept=0, linetype="dashed", color = "black") +
+  theme_minimal()
+
+
+plot_grid(plotlist=list(gg_point_1, gg_point_2, gg_point_3, gg_point_4), ncol=2, nrow=2)
+
+
+```
+:::
+
+### fNIRS
 
 ```{r}
 
