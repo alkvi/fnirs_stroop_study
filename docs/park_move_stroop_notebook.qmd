@@ -45,7 +45,9 @@ library(ggstatsplot)
 
 # Introduction
 
-This document is intended to be used as an "open lab notebook" for an fNIRS study on dual-task walking, analyzing an existing dataset, the Park-MOVE dataset collected between 2021 and 2023 [@franzenParkMOVEFNIRSStudy2023]. To provide transparent and systematic support for the findings of the study, this document is updated throughout the study and contains:
+This document is intended to be used as an "open lab notebook" for an fNIRS study on dual-task walking, analyzing an existing dataset, the Park-MOVE dataset collected between 2021 and 2023 [@franzenParkMOVEFNIRSStudy2023]. Note that while the data is in a central repository, access to the data is restricted and regulated by data transfer agreements. 
+
+To provide transparent and systematic support for the findings of the study, this document is updated throughout the study and contains:
 
 -   Background and methods
 
@@ -599,7 +601,7 @@ or written out fully
 beta ~ -1 + condition + step_time_var + tmt_b + step_time_var:tmt_b + age + (disease_severity)
 ```
 
-![Expected relationship(s), aim 3, with some simulated values](images/model_2_combined.png)
+![Expected relationship(s), aim 3, with some simulated values](notebook-resources/model_2_combined.png)
 
 ## Model details
 
@@ -649,9 +651,9 @@ These are between medium and large effect sizes going by Cohen’s definitions, 
 
 This means that we could reliably make conclusions about effects of medium to large size, but not smaller than that. A null result could therefore mean that there might still be a small effect that our sample size is too small to detect. A smallest effect size of interest (SESOI) is difficult to speculate on. However, seeing if there is a medium to large effect is still interesting.
 
-![Effect size / sample size curve for model 1 (F test)](images/gpower_1.png)
+![Effect size / sample size curve for model 1 (F test)](notebook-resources/gpower_1.png)
 
-![Effect size / sample size curve for model 1 (t test)](images/gpower_2.png)
+![Effect size / sample size curve for model 1 (t test)](notebook-resources/gpower_2.png)
 
 ### Secondary analysis (aim 2 & 3)
 
@@ -688,8 +690,6 @@ We have a pilot study (<https://doi.org/10.1002/brb3.2948)> where we analysed th
 Subject-level fNIRS analysis can be found in [park_move_protocol_1_subject_analysis.m](park_move_protocol_1_subject_analysis.m)
 
 Group-level fNIRS analysis can be found in [park_move_protocol_1_group_analysis.m](park_move_protocol_1_group_analysis.m)
-
-TO DO: will create a github repository for this study with the MATLAB, R and Python code.
 
 The group-level results (output from linear models) is exported to csv and read below.
 
@@ -890,6 +890,8 @@ Outliers were evaluated in the Residual-Leverage and influence plots in [model v
 
 There were a few outliers, more in the OA group than in the PD group. The RemoveOutlierSubjects.m function showed 2 outlier subjects in OA, and 1 in PD. These corresponded to large circles in the influence plots.
 
-Re-running the analysis without the outlier subjects resulted in slightly different beta values, but significant effects in each aim remained mostly the same, except a few condition effects (ST_stand for OA in aim 1, DT_walk for PD in aim 2, ST_stand for OA in aim 3). The difference were in those condition effects which were hovering around FDR-adjusted p .05. This points to robust results for the effects of interest (step time variability, age, DT costs), and mostly robust results for condition effects.
+Re-running the analysis without the outlier subjects resulted in slightly different beta values, but significant effects in each aim remained mostly the same, except a few condition effects (ST_stand for OA in aim 1, DT_walk for PD in aim 2, ST_stand for OA in aim 3). The difference were in those condition effects which were hovering around FDR-adjusted p .05. 
+
+This points to robust results for the effects of interest (step time variability, age, DT costs), and mostly robust results for condition effects.
 
 # References
