@@ -74,6 +74,7 @@ demographics.tmt4 = NaN(height(demographics),1);
 demographics.ledd = NaN(height(demographics),1);
 demographics.dt_cost_stroop_time = NaN(height(demographics),1);
 demographics.prio = NaN(height(demographics),1);
+demographics.edu = NaN(height(demographics),1);
 
 % Add balance data
 for idx=1:height(balance_data)
@@ -114,7 +115,7 @@ for idx=1:height(updrs_data)
     demographics(match_idx,:).hy(hy_value == 3 | hy_value == 4) = "HY_3_4";
 end
 
-% Add LEDD data
+% Add LEDD data and education
 for idx=1:height(redcap_data)
     subj_id_seek = string(redcap_data.id_nummer(idx)); 
     match_idx = strcmp(demographics.SubjectID, subj_id_seek);
@@ -122,6 +123,7 @@ for idx=1:height(redcap_data)
         continue
     end
     demographics(match_idx,:).ledd = redcap_data(idx,:).led_total;
+    demographics(match_idx,:).edu = redcap_data(idx,:).crf_utbildning_ar;
 end
 
 % Gait data
@@ -381,8 +383,8 @@ roi_result_pd_aim2_3.included_n = repmat(GroupStats_pd.demographics.included_sub
 
 % st_step_time_var*tmt4 
 
-formula_oa = 'beta ~ -1 + cond + st_step_time_var*tmt4 + age';
-formula_pd = 'beta ~ -1 + cond + st_step_time_var*tmt4 + age + updrs_3_motor';
+formula_oa = 'beta ~ -1 + cond + st_step_time_var*tmt4 + age + edu';
+formula_pd = 'beta ~ -1 + cond + st_step_time_var*tmt4 + age + updrs_3_motor + edu';
 
 % OA group
 job = nirs.modules.MixedEffects();

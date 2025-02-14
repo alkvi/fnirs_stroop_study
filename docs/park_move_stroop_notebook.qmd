@@ -593,13 +593,13 @@ In the literature, we find that dual-task impairments are exacerbated by reduced
 **Model:**
 
 ```         
-beta ~ -1 + condition + step_time_var * tmt_b + age + (disease_severity)
+beta ~ -1 + condition + step_time_var * tmt_b + age + education_years + (disease_severity)
 ```
 
 or written out fully
 
 ```         
-beta ~ -1 + condition + step_time_var + tmt_b + step_time_var:tmt_b + age + (disease_severity)
+beta ~ -1 + condition + step_time_var + tmt_b + step_time_var:tmt_b + age + education_years + (disease_severity)
 ```
 
 ![Expected relationship(s), aim 3, with some simulated values](notebook-resources/model_2_combined.png)
