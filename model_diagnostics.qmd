@@ -1,0 +1,91 @@
+---
+title: "fNIRS Parkinson DT study - Diagnostics"
+bibliography: C:/pandoc/zotero_lib.bib
+format: 
+  html:
+    code-fold: true
+    code-summary: "Show the code"
+    embed-resources: true
+  
+editor: source
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=10, fig.height=5) 
+
+# load library
+library(lme4)
+library(jtools)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+library(olsrr)
+library(car)
+
+```
+
+# Diagnostics
+```{r}
+#| output: asis
+
+# File names
+files <- c("model_aim1_oa",
+           "model_aim1_pd",
+           "model_aim2_1_oa",
+           "model_aim2_1_pd",
+           "model_aim2_2_oa",
+           "model_aim2_2_pd",
+           "model_aim2_3_oa",
+           "model_aim2_3_pd",
+           "model_aim3_oa",
+           "model_aim3_pd")
+
+# Loop through each file
+for (file in files) {
+  
+  folder = "data/model_eval/"
+  coeff_file = paste(folder, file, "_estimates.csv", sep="")
+  data_file = paste(folder, file, "_data.csv", sep="")
+  formula_file = paste(folder, file, "_formula.txt", sep="")
+  formula_description = paste(folder, file, "_description.txt", sep="")
+  
+  # Read the coefficients from the CSV file
+  coeffs <- read.csv(coeff_file)
+  model_data <- read.csv(data_file)
+  model_formula <- read_file(formula_file)
+  model_formula <- sub("beta ~ ", "beta ~ -1 + ", model_formula)
+  model_formula_descr <- read_file(formula_description)
+  
+  # Print a headline for the current file
+  cat("\n\n## Analysis for", file, "\n\n")
+  cat("\nFormula: ", model_formula_descr, "\n\n")
+
+  # Set formula
+  formula <- as.formula(model_formula)
+  
+  # Import data points
+  n = length(model_data$beta)
+  data <- model_data %>% select(-Residuals, -FittedValues)
+
+  # Set up the model structure
+  model <- lm(formula, data = data)
+  
+  # Manually set the model fields to exported data
+  model$coefficients <- setNames(coeffs$Coefficients, coeffs$Predictors)
+  model$residuals <- model_data$Residuals
+  model$fitted.values <- model_data$FittedValues
+  model$call <- formula
+  model$terms <- terms(formula)
+  model$qr <- qr(model.matrix(formula, data))
+  model$rank <- ncol(model.matrix(formula, data))
+  model$df.residual <- n - length(model$coefficients)
+  
+  # Diagnostic plots
+  plot(model)
+  influencePlot(model, main="Influence Plot", sub="Circle size is proportial to Cook's Distance")
+}
+
+```
+

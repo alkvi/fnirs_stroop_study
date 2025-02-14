@@ -1,0 +1,432 @@
+---
+title: "fNIRS Parkinson DT study - normality check"
+bibliography: C:/pandoc/zotero_lib.bib
+format: 
+  html:
+    code-fold: true
+    code-summary: "Show the code"
+    embed-resources: true
+  
+editor: source
+---
+
+# Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=10, fig.height=5) 
+
+# load library
+library(lme4)
+library(jtools)
+library(dplyr)
+library(plyr, include.only = c("revalue"))
+library(tidyr)
+library(purrr)
+library(forcats)
+library(rstatix)
+library(arsenal)
+
+library(ggpubr)
+library(ggplot2)
+library(patchwork)
+library(cowplot)
+library(ggiraph)
+library(plotly)
+
+library(gt)
+library(gtExtras)
+library(ggstatsplot)
+
+```
+
+::: {.content-visible when-format="html"}
+```{r}
+
+# Load and prepare all data
+
+var_data_path <- "../Park-MOVE_fnirs_dataset_v2/IMU_data/imu_variability_parameters.csv"
+gait_path <- "../Park-MOVE_fnirs_dataset_v2/IMU_data//imu_gait_parameters.csv"
+turns_file <- "data/mobility_lab_turn_parameters.csv"
+time_file <- paste("../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_answer_time.csv", sep="")
+demo_file <- paste("../Park-MOVE_fnirs_dataset_v2/basic_demographics.csv", sep="")
+redcap_file <- paste("../Park-MOVE_fnirs_dataset_v2/REDcap_data/All_REDcap_data.csv", sep="")
+acc_file <- paste("../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_accuracy.csv", sep="")
+
+# Which ROI?
+selected_roi <- "BA9+46"
+
+# How handle correlations?
+corr_method <- "pearson"
+
+# Which power limit do we use?
+power_limit <- 0.1
+
+# Do we filter any subjects?
+filter_subjects <- c("NA")
+
+### Identifiers
+csv_path <- paste("../Park-MOVE_fnirs_dataset_v2/identifiers_YA.csv", sep="")
+identifiers_ya <- read.csv(csv_path)
+csv_path <- paste("../Park-MOVE_fnirs_dataset_v2/identifiers_OA.csv", sep="")
+identifiers_oa <- read.csv(csv_path)
+csv_path <- paste("../Park-MOVE_fnirs_dataset_v2/identifiers_PD.csv", sep="")
+identifiers_pd <- read.csv(csv_path)
+
+
+```
+:::
+
+# Process data 
+
+::: {.content-visible when-format="html"}
+Code block - process demographic data, neuropsych data, and gait data.
+
+```{r}
+
+# Assign group function
+assign_group <- function(df, identifiers_ya, identifiers_oa, identifiers_pd){
+  df$group <- case_when(
+    df$subject %in% identifiers_ya$id_nummer ~ "YA",
+    df$subject %in% identifiers_oa$id_nummer ~ "OA",
+    df$subject %in% identifiers_pd$id_nummer ~ "PD",
+    TRUE ~ NA_character_
+  )
+  df$group <- factor(df$group, levels=c('YA', 'OA', 'PD'))
+  return(df)
+}
+
+# Helper function to calculate DT cost
+calculate_dt_cost <- function(dt, st) {
+  -(dt - st) / st * 100
+}
+
+# Demographic data
+demo_data <- read.csv(demo_file)
+demo_data['sex'][demo_data['sex'] == 0] <- 'Male'
+demo_data['sex'][demo_data['sex'] == 1] <- 'Female'
+demo_data$sex <- factor(demo_data$sex, levels=c('Male', 'Female'))
+
+# REDcap data
+redcap_data <- read.csv(redcap_file) 
+names(redcap_data)[names(redcap_data) == 'id_nummer'] <- 'subject'
+redcap_data['ramlat_12_man'][redcap_data['ramlat_12_man'] == 0] <- 'No'
+redcap_data['ramlat_12_man'][redcap_data['ramlat_12_man'] == 1] <- 'Yes'
+redcap_data$ramlat_12_man <- factor(redcap_data$ramlat_12_man, levels=c('No', 'Yes'))
+
+# Merge
+all_subject_data <- merge(demo_data, redcap_data, by = "subject", all = TRUE)
+all_subject_data <- assign_group(all_subject_data, identifiers_ya, identifiers_oa, identifiers_pd)
+
+# Filter out YA
+all_subject_data <- all_subject_data[!all_subject_data$group == 'YA', ]
+all_subject_data$group <- factor(all_subject_data$group, levels=c('OA', 'PD'))
+
+# Get TMT contrast
+all_subject_data <- all_subject_data %>%
+  mutate(tmt_4_tmt_2_contrast = tmt_4 - tmt_2)
+
+# Read and process gait data
+gait_data <- read.csv(gait_path)
+gait_data <- gait_data %>%
+  mutate(Cadence.LR = (Cadence.L + Cadence.R) / 2,
+         Single.Support.LR = (Single.Support.L + Single.Support.R) / 2,
+         Step.Count.LR = (Step.Count.L + Step.Count.R) / 2,
+         Step.Time.LR = (Step.Time.L + Step.Time.R) / 2,
+         Stride.Length.LR = (Stride.Length.L + Stride.Length.R) / 2,
+         Walking.Speed.LR = (Walking.Speed.L + Walking.Speed.R) / 2,
+         trial_type = recode(trial_type, 
+                             'Navigation' = 'ST_navigation', 
+                             'Straight_walking' = 'ST_walk', 
+                             'Straight_walking_and_Aud_Stroop' = 'DT_walk', 
+                             'Navigated_walking' = 'ST_navigation', 
+                             'Navigation_and_Aud_Stroop' = 'DT_navigation')) %>%
+  filter(trial_type != "Stand_still_and_Aud_Stroop")
+
+# Get averages of all blocks per subject
+gait_data <- gait_data %>%
+  group_by(subject, session, trial_type) %>%
+  summarise(mean_cadence = mean(Cadence.LR, na.rm = TRUE),
+            mean_single_support = mean(Single.Support.LR, na.rm = TRUE), 
+            mean_step_count = mean(Step.Count.LR, na.rm = TRUE),
+            mean_step_time = mean(Step.Time.LR, na.rm = TRUE),
+            mean_stride_length = mean(Stride.Length.LR, na.rm = TRUE),
+            mean_walking_speed = mean(Walking.Speed.LR, na.rm = TRUE),
+            .groups='drop')
+
+# Make wider so we have one column per trial type
+gait_data <- gait_data %>%
+  pivot_wider(names_from = c(session, trial_type),
+              values_from = c(mean_cadence, 
+                              mean_single_support,
+                              mean_step_count,
+                              mean_step_time,
+                              mean_stride_length,
+                              mean_walking_speed))
+
+# Read and process gait variability data
+gait_variability_data <- read.csv(var_data_path) %>%
+  mutate(trial_type = recode(trial_type, 'Navigation' = 'ST_navigation', 
+                             'Straight_walking' = 'ST_walk', 
+                             'Straight_walking_and_Aud_Stroop' = 'DT_walk', 
+                             'Navigated_walking' = 'ST_navigation', 
+                             'Navigation_and_Aud_Stroop' = 'DT_navigation'),
+         Step.Time.Variability = Step.Time.Variability * 1000)
+
+# Get averages of all blocks per subject
+gait_variability_data <- gait_variability_data %>%
+  group_by(subject, session, trial_type) %>%
+  summarise(step_time_variability = mean(Step.Time.Variability, na.rm = TRUE),
+            stride_length_variability = mean(Stride.Length.Variability, na.rm = TRUE), 
+            step_time_asymmetry_percent = mean(Step.Time.Asymmetry.Percent, na.rm = TRUE),
+            stride_length_asymmetry_percent = mean(Stride.Length.Asymmetry.Percent, na.rm = TRUE),
+            .groups='drop')
+
+# Make wider so we have one column per trial type
+gait_variability_data <- gait_variability_data %>%
+  pivot_wider(names_from = c(session, trial_type),
+              values_from = c(step_time_variability, 
+                              stride_length_variability,
+                              step_time_asymmetry_percent,
+                              stride_length_asymmetry_percent))
+# Merge gait data
+all_gait_data <- merge(gait_data, gait_variability_data, by = "subject", all = TRUE) %>%
+  assign_group(identifiers_ya, identifiers_oa, identifiers_pd) %>%
+  filter(group != 'YA')
+
+# Add DT costs
+all_gait_data <- all_gait_data %>%
+  mutate(diff_walk_speed_protocol1 = mean_walking_speed_protocol1_DT_walk - mean_walking_speed_protocol1_ST_walk,
+         diff_walk_speed_protocol3 = mean_walking_speed_protocol3_DT_navigation - mean_walking_speed_protocol3_ST_navigation,
+         dt_cost_walk_speed_protocol1 = calculate_dt_cost(mean_walking_speed_protocol1_DT_walk, mean_walking_speed_protocol1_ST_walk),
+         dt_cost_walk_speed_protocol3 = calculate_dt_cost(mean_walking_speed_protocol3_DT_navigation, mean_walking_speed_protocol3_ST_navigation),
+         dt_cost_stride_length_protocol1 = calculate_dt_cost(mean_stride_length_protocol1_DT_walk, mean_stride_length_protocol1_ST_walk),
+         dt_cost_stride_length_protocol3 = calculate_dt_cost(mean_stride_length_protocol3_DT_navigation, mean_stride_length_protocol3_ST_navigation),
+         dt_cost_step_time_variability_protocol1 = calculate_dt_cost(step_time_variability_protocol1_DT_walk, step_time_variability_protocol1_ST_walk),
+         dt_cost_step_time_variability_protocol3 = calculate_dt_cost(step_time_variability_protocol3_DT_navigation, step_time_variability_protocol3_ST_navigation))
+
+# Process auditory stroop data
+acc_data <- read.csv(acc_file)
+acc_data_long <- pivot_longer(acc_data, 
+                         cols = starts_with("accuracy_"), 
+                         names_to = "accuracy_variable", 
+                         values_to = "accuracy_value")
+
+# Only take protocol 1
+acc_data <- acc_data[acc_data$protocol == 'protocol_1', ]
+
+# Make wider so we have one column per trial type
+acc_data_wide <- acc_data[c('subject', 'block_type', 'protocol', 'accuracy_total')]
+acc_data_wide <- acc_data_wide %>%
+  pivot_wider(names_from = c(block_type, protocol),
+              values_from = c(accuracy_total))
+
+# Stroop times
+time_data <- read.csv(time_file)
+
+# Only take protocol 1
+time_data <- time_data[time_data$protocol == 'protocol_1', ]
+# One outlier in idx 7504
+time_data <- time_data[-c(7504),]
+
+# Assign group
+time_data <- time_data %>%
+  assign_group(identifiers_ya, identifiers_oa, identifiers_pd) %>%
+  filter(group != 'YA')
+acc_data_long <- assign_group(acc_data_long, identifiers_ya, identifiers_oa, identifiers_pd)
+
+# Get means per group
+stroop_time_group_means <- time_data %>%
+  group_by(group, block_type) %>%
+  summarise(stroop_time_mean_value = mean(answer_time, na.rm = TRUE), .groups='drop')
+
+# Get avg answer time per subject
+stroop_time_subject_means <- time_data %>%
+  group_by(subject, protocol, block_type) %>%
+  summarise(stroop_time_mean_value = mean(answer_time, na.rm = TRUE), .groups='drop')
+
+stroop_time_subject_means <- assign_group(stroop_time_subject_means, identifiers_ya, identifiers_oa, identifiers_pd)
+
+# Add stroop DT costs
+stroop_dt_costs <- stroop_time_subject_means %>%
+  pivot_wider(names_from = c(protocol, block_type),
+              values_from = c(stroop_time_mean_value))
+
+# Add DT costs
+stroop_dt_costs <- stroop_dt_costs %>%
+  mutate(dt_cost_stroop_time_protocol1 = -calculate_dt_cost(protocol_1_DT, protocol_1_ST))
+
+stroop_dt_costs <- stroop_dt_costs[c('subject', 'dt_cost_stroop_time_protocol1')]
+
+# Split into different groups
+all_subject_data <- merge(all_subject_data, all_gait_data, by = "subject", all = TRUE)
+all_subject_data <- merge(all_subject_data, stroop_dt_costs, by = "subject", all = TRUE)
+
+all_subject_data <- subset(all_subject_data, select = -c(group.y))
+names(all_subject_data)[names(all_subject_data) == 'group.x'] <- 'group'
+ya_data <- all_subject_data[all_subject_data$group == 'YA', ]
+ya_data <- ya_data[!is.na(ya_data$subject),]
+oa_data <- all_subject_data[all_subject_data$group == 'OA', ]
+oa_data <- oa_data[!is.na(oa_data$subject),]
+pd_data <- all_subject_data[all_subject_data$group == 'PD', ]
+pd_data <- pd_data[!is.na(pd_data$subject),]
+
+```
+:::
+
+
+# Check normality via shapiro_test
+
+The null hypothesis of these tests is that “sample distribution is normal”. If the test is significant, the distribution is non-normal.
+
+```{r, echo=FALSE}
+
+# Normality testing, via Shapiro-Wilks
+age_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(age)
+
+edu_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(crf_utbildning_ar)
+
+height_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(height)
+
+weight_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(weight)
+
+balance_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(mb_total)
+
+w12_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(g12_sum)
+
+tmt_2_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(tmt_2)
+
+tmt_4_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(tmt_4)
+
+cwit_3_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(cwit_3)
+
+ravlt_ret_group_norm <- all_subject_data %>%
+  group_by(group) %>%
+  shapiro_test(ravlt_ret)
+
+norm_table <- rbind(age_group_norm, edu_group_norm, height_group_norm,
+                   weight_group_norm, balance_group_norm, w12_group_norm,
+                   tmt_2_group_norm, tmt_4_group_norm,
+                   cwit_3_group_norm, ravlt_ret_group_norm)
+
+mean_walking_speed_protocol1_ST_walk_norm <- all_gait_data %>%
+  group_by(group) %>%
+  shapiro_test(mean_walking_speed_protocol1_ST_walk)
+
+mean_walking_speed_protocol1_DT_walk_norm <- all_gait_data %>%
+  group_by(group) %>%
+  shapiro_test(mean_walking_speed_protocol1_DT_walk)
+
+mean_stride_length_protocol1_ST_walk_norm <- all_gait_data %>%
+  group_by(group) %>%
+  shapiro_test(mean_stride_length_protocol1_ST_walk)
+
+mean_stride_length_protocol1_DT_walk_norm <- all_gait_data %>%
+  group_by(group) %>%
+  shapiro_test(mean_stride_length_protocol1_DT_walk)
+
+step_time_variability_protocol1_ST_walk_norm <- all_gait_data %>%
+  group_by(group) %>%
+  shapiro_test(step_time_variability_protocol1_ST_walk)
+
+step_time_variability_protocol1_DT_walk_norm <- all_gait_data %>%
+  group_by(group) %>%
+  shapiro_test(step_time_variability_protocol1_DT_walk)
+
+dt_cost_walk_speed_protocol1_norm <- all_gait_data %>%
+  group_by(group) %>%
+  shapiro_test(dt_cost_walk_speed_protocol1)
+
+dt_cost_stride_length_protocol1_norm <- all_gait_data %>%
+  group_by(group) %>%
+  shapiro_test(dt_cost_stride_length_protocol1)
+
+stroop_time_group_norm <- stroop_time_subject_means %>%
+  group_by(group) %>%
+  shapiro_test(stroop_time_mean_value)
+
+norm_table_gait <- rbind(mean_walking_speed_protocol1_ST_walk_norm,
+                         mean_walking_speed_protocol1_DT_walk_norm, 
+                         mean_stride_length_protocol1_ST_walk_norm,
+                         mean_stride_length_protocol1_DT_walk_norm,
+                         step_time_variability_protocol1_ST_walk_norm,
+                         step_time_variability_protocol1_DT_walk_norm,
+                         dt_cost_walk_speed_protocol1_norm,
+                         dt_cost_stride_length_protocol1_norm,
+                         stroop_time_group_norm)
+
+
+```
+
+Table
+```{r, results='asis'}
+
+norm_table |>
+  gt() |>
+  fmt_number(
+    columns = c(statistic, p),
+    decimals = 3,
+    use_seps = FALSE
+  )
+
+norm_table_gait |>
+  gt() |>
+  fmt_number(
+    columns = c(statistic, p),
+    decimals = 3,
+    use_seps = FALSE
+  )
+
+```
+
+
+  
+QQ plots - demo
+
+```{r, echo=FALSE, warning=FALSE}
+
+# Also q-q plot them
+ggqqplot(all_subject_data, x = "age", facet.by = "group", ylab = "age")
+ggqqplot(all_subject_data, x = "height", facet.by = "group", ylab = "height")
+ggqqplot(all_subject_data, x = "weight", facet.by = "group", ylab = "weight")
+ggqqplot(all_subject_data, x = "crf_utbildning_ar", facet.by = "group", ylab = "crf_utbildning_ar")
+ggqqplot(all_subject_data, x = "mb_total", facet.by = "group", ylab = "balance")
+ggqqplot(all_subject_data, x = "g12_sum", facet.by = "group", ylab = "walk12")
+
+# Non-normal: age, edu (ya), height (pd), weight (pd), balance, walk12.
+```
+
+QQ plots - gait, stroop
+```{r, echo=FALSE, warning=FALSE}
+
+# Also q-q plot them
+ggqqplot(all_gait_data, x = "mean_walking_speed_protocol1_ST_walk", facet.by = "group", ylab = "walk_speed_ST")
+ggqqplot(all_gait_data, x = "mean_walking_speed_protocol1_DT_walk", facet.by = "group", ylab = "walk_speed_DT")
+ggqqplot(all_gait_data, x = "mean_stride_length_protocol1_ST_walk", facet.by = "group", ylab = "stride_length_ST")
+ggqqplot(all_gait_data, x = "mean_stride_length_protocol1_DT_walk", facet.by = "group", ylab = "stride_length_DT")
+ggqqplot(all_gait_data, x = "step_time_variability_protocol1_ST_walk", facet.by = "group", ylab = "step_time_var_ST")
+ggqqplot(all_gait_data, x = "step_time_variability_protocol1_DT_walk", facet.by = "group", ylab = "step_time_var_DT")
+ggqqplot(all_gait_data, x = "dt_cost_walk_speed_protocol1", facet.by = "group", ylab = "dt_cost_speed")
+ggqqplot(all_gait_data, x = "dt_cost_stride_length_protocol1", facet.by = "group", ylab = "dt_cost_stride_length")
+ggqqplot(stroop_time_subject_means, x = "stroop_time_mean_value", facet.by = "group", ylab = "stroop time")
+
+# Non-normal: basically all except maybe stroop time, OA stride length, PD walk speed
+```
