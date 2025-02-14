@@ -10,6 +10,7 @@ format:
     toc-depth: 2
     toc-expand: 2
     theme: flatly
+    output-file: index.html
   
 editor: source
 ---
