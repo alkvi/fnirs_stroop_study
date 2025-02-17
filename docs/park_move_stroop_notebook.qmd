@@ -71,6 +71,7 @@ How the dataset used in this study was prepared can be found in: <https://github
 |------------------------|------------------------|------------------------|
 | 1 | 2024-12-09 | First version, with analysis plan |
 | 2 | 2025-02-12 | Analyses performed, model diagnostics and outlier analysis done. One subject included in rev1 was excluded (after re-evaluating exclusion criteria). Moved format to Quarto. |
+| 3 | 2025-02-14 | Update aim 3 to control for education, add details on missing data |
 
 : Version history
 
@@ -691,6 +692,12 @@ We have a pilot study (<https://doi.org/10.1002/brb3.2948)> where we analysed th
 Subject-level fNIRS analysis can be found in [park_move_protocol_1_subject_analysis.m](park_move_protocol_1_subject_analysis.m)
 
 Group-level fNIRS analysis can be found in [park_move_protocol_1_group_analysis.m](park_move_protocol_1_group_analysis.m)
+
+Missing data compared to original targets are:
+
+- 3 OA (1 after re-evaluating criteria, 2 not following protocol), 2 were also missing gait data (data loss during protocol).
+- 3 PD (1 data loss, 1 not following protocol, 1 not completing protocol), 2 were also missing MDS-UPDRS data.
+- Amount of included subjects in each model is indicated in included_n.
 
 The group-level results (output from linear models) is exported to csv and read below.
 

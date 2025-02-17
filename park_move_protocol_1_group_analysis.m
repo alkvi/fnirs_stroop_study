@@ -242,6 +242,8 @@ roi_result_oa_aim1.BIC = repmat(AIC, size(roi_result_oa_aim1,1),1);
 roi_result_oa_aim1.group = repmat("OA", size(roi_result_oa_aim1,1),1);
 roi_result_oa_aim1.comment = repmat("Aim 1", size(roi_result_oa_aim1,1),1);
 roi_result_oa_aim1.included_n = repmat(GroupStats_oa.demographics.included_subjects_n, size(roi_result_oa_aim1,1),1);
+nan_idx = isnan(demographics_oa.st_step_time_var) | isnan(demographics_oa.age);
+roi_result_oa_aim1.included_n = roi_result_oa_aim1.included_n - sum(nan_idx);
 
 [AIC, BIC] = PlotDiagnostics(roi_result_pd_aim1.model{1}, "PD_model_1" , covar);
 roi_result_pd_aim1.formula = repmat(string(formula_pd), size(roi_result_pd_aim1,1),1);
@@ -251,6 +253,8 @@ roi_result_pd_aim1.group = repmat("PD", size(roi_result_pd_aim1,1),1);
 roi_result_pd_aim1.comment = repmat("Aim 1", size(roi_result_pd_aim1,1),1);
 roi_result_pd_aim1.comment = repmat("Aim 1", size(roi_result_pd_aim1,1),1);
 roi_result_pd_aim1.included_n = repmat(GroupStats_pd.demographics.included_subjects_n, size(roi_result_pd_aim1,1),1);
+nan_idx = isnan(demographics_pd.st_step_time_var) | isnan(demographics_pd.age) | isnan(demographics_pd.updrs_3_motor);
+roi_result_pd_aim1.included_n = roi_result_pd_aim1.included_n - sum(nan_idx);
 
 %% Aim 2 
 
@@ -290,6 +294,8 @@ roi_result_oa_aim2_1.BIC = repmat(AIC, size(roi_result_oa_aim2_1,1),1);
 roi_result_oa_aim2_1.group = repmat("OA", size(roi_result_oa_aim2_1,1),1);
 roi_result_oa_aim2_1.comment = repmat("Aim 2_1", size(roi_result_oa_aim2_1,1),1);
 roi_result_oa_aim2_1.included_n = repmat(GroupStats_oa.demographics.included_subjects_n, size(roi_result_oa_aim2_1,1),1);
+nan_idx = isnan(demographics_oa.age) | isnan(demographics_oa.dt_cost_walk_speed);
+roi_result_oa_aim2_1.included_n = roi_result_oa_aim2_1.included_n - sum(nan_idx);
 
 [AIC, BIC] = PlotDiagnostics(roi_result_pd_aim2_1.model{1}, "PD_model_2_1" , covar);
 roi_result_pd_aim2_1.formula = repmat(string(formula_pd), size(roi_result_pd_aim2_1,1),1);
@@ -298,6 +304,8 @@ roi_result_pd_aim2_1.BIC = repmat(AIC, size(roi_result_pd_aim2_1,1),1);
 roi_result_pd_aim2_1.group = repmat("PD", size(roi_result_pd_aim2_1,1),1);
 roi_result_pd_aim2_1.comment = repmat("Aim 2_1", size(roi_result_pd_aim2_1,1),1);
 roi_result_pd_aim2_1.included_n = repmat(GroupStats_pd.demographics.included_subjects_n, size(roi_result_pd_aim2_1,1),1);
+nan_idx = isnan(demographics_pd.age) | isnan(demographics_pd.dt_cost_walk_speed) | isnan(demographics_pd.updrs_3_motor);
+roi_result_pd_aim2_1.included_n = roi_result_pd_aim2_1.included_n - sum(nan_idx);
 
 formula_oa = 'beta ~ -1 + cond + age + dt_cost_stroop_time';
 formula_pd = 'beta ~ -1 + cond + age + updrs_3_motor + dt_cost_stroop_time';
@@ -330,6 +338,8 @@ roi_result_oa_aim2_2.BIC = repmat(AIC, size(roi_result_oa_aim2_2,1),1);
 roi_result_oa_aim2_2.group = repmat("OA", size(roi_result_oa_aim2_2,1),1);
 roi_result_oa_aim2_2.comment = repmat("Aim 2_2", size(roi_result_oa_aim2_2,1),1);
 roi_result_oa_aim2_2.included_n = repmat(GroupStats_oa.demographics.included_subjects_n, size(roi_result_oa_aim2_2,1),1);
+nan_idx = isnan(demographics_oa.age) | isnan(demographics_oa.dt_cost_stroop_time);
+roi_result_oa_aim2_2.included_n = roi_result_oa_aim2_2.included_n - sum(nan_idx);
 
 [AIC, BIC] = PlotDiagnostics(roi_result_pd_aim2_2.model{1}, "PD_model_2_2" , covar);
 roi_result_pd_aim2_2.formula = repmat(string(formula_pd), size(roi_result_pd_aim2_2,1),1);
@@ -338,6 +348,8 @@ roi_result_pd_aim2_2.BIC = repmat(AIC, size(roi_result_pd_aim2_2,1),1);
 roi_result_pd_aim2_2.group = repmat("PD", size(roi_result_pd_aim2_2,1),1);
 roi_result_pd_aim2_2.comment = repmat("Aim 2_2", size(roi_result_pd_aim2_2,1),1);
 roi_result_pd_aim2_2.included_n = repmat(GroupStats_pd.demographics.included_subjects_n, size(roi_result_pd_aim2_2,1),1);
+nan_idx = isnan(demographics_pd.age) | isnan(demographics_pd.dt_cost_stroop_time) | isnan(demographics_pd.updrs_3_motor);
+roi_result_pd_aim2_2.included_n = roi_result_pd_aim2_2.included_n - sum(nan_idx);
 
 formula_oa = 'beta ~ -1 + cond + age + prio';
 formula_pd = 'beta ~ -1 + cond + age + updrs_3_motor + prio';
@@ -370,6 +382,8 @@ roi_result_oa_aim2_3.BIC = repmat(AIC, size(roi_result_oa_aim2_3,1),1);
 roi_result_oa_aim2_3.group = repmat("OA", size(roi_result_oa_aim2_3,1),1);
 roi_result_oa_aim2_3.comment = repmat("Aim 2_3", size(roi_result_oa_aim2_3,1),1);
 roi_result_oa_aim2_3.included_n = repmat(GroupStats_oa.demographics.included_subjects_n, size(roi_result_oa_aim2_3,1),1);
+nan_idx = isnan(demographics_oa.age) | isnan(demographics_oa.prio);
+roi_result_oa_aim2_3.included_n = roi_result_oa_aim2_3.included_n - sum(nan_idx);
 
 [AIC, BIC] = PlotDiagnostics(roi_result_pd_aim2_3.model{1}, "PD_model_2_3" , covar);
 roi_result_pd_aim2_3.formula = repmat(string(formula_pd), size(roi_result_pd_aim2_3,1),1);
@@ -378,6 +392,8 @@ roi_result_pd_aim2_3.BIC = repmat(AIC, size(roi_result_pd_aim2_3,1),1);
 roi_result_pd_aim2_3.group = repmat("PD", size(roi_result_pd_aim2_3,1),1);
 roi_result_pd_aim2_3.comment = repmat("Aim 2_3", size(roi_result_pd_aim2_3,1),1);
 roi_result_pd_aim2_3.included_n = repmat(GroupStats_pd.demographics.included_subjects_n, size(roi_result_pd_aim2_3,1),1);
+nan_idx = isnan(demographics_pd.age) | isnan(demographics_pd.prio) | isnan(demographics_pd.updrs_3_motor);
+roi_result_pd_aim2_3.included_n = roi_result_pd_aim2_3.included_n - sum(nan_idx);
 
 %% Aim 3
 
@@ -413,6 +429,9 @@ roi_result_oa_aim3.BIC = repmat(AIC, size(roi_result_oa_aim3,1),1);
 roi_result_oa_aim3.group = repmat("OA", size(roi_result_oa_aim3,1),1);
 roi_result_oa_aim3.comment = repmat("Aim 3", size(roi_result_oa_aim3,1),1);
 roi_result_oa_aim3.included_n = repmat(GroupStats_oa.demographics.included_subjects_n, size(roi_result_oa_aim3,1),1);
+nan_idx = isnan(demographics_oa.tmt4) | isnan(demographics_oa.st_step_time_var) ... 
+    | isnan(demographics_oa.age) | isnan(demographics_oa.edu);
+roi_result_oa_aim3.included_n = roi_result_oa_aim3.included_n - sum(nan_idx);
 
 [AIC, BIC] = PlotDiagnostics(roi_result_pd_aim3.model{1}, "PD_model_3" , covar);
 roi_result_pd_aim3.formula = repmat(string(formula_pd), size(roi_result_pd_aim3,1),1);
@@ -421,6 +440,9 @@ roi_result_pd_aim3.BIC = repmat(AIC, size(roi_result_pd_aim3,1),1);
 roi_result_pd_aim3.group = repmat("PD", size(roi_result_pd_aim3,1),1);
 roi_result_pd_aim3.comment = repmat("Aim 3", size(roi_result_pd_aim3,1),1);
 roi_result_pd_aim3.included_n = repmat(GroupStats_pd.demographics.included_subjects_n, size(roi_result_pd_aim3,1),1);
+nan_idx = isnan(demographics_pd.updrs_3_motor)|isnan(demographics_pd.tmt4) | isnan(demographics_pd.st_step_time_var) ... 
+    | isnan(demographics_pd.age) | isnan(demographics_pd.edu);
+roi_result_pd_aim3.included_n = roi_result_pd_aim3.included_n - sum(nan_idx);
 
 %% Export models for external diagnostics
 
