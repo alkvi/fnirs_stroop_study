@@ -11,6 +11,9 @@ hemo_measure = "cbsi";
 % File locations
 subjstats_file = "../Park-MOVE_fnirs_dataset_v2/mat_files/SubjStats_setup_1_" + hemo_measure + ".mat";
 results_file = "data/results_table_" + hemo_measure + "_protocol_1.csv";
+results_file_contrast = "data/results_table_" + hemo_measure + "_protocol_1_contrast.csv";
+folder_figures = "figures";
+folder_contrast = "figures";
 
 % Load
 SubjStats = importdata(subjstats_file);
@@ -49,6 +52,8 @@ fprintf('Sum PD: %d\n', sum(pd_idx));
 
 %% Add covariates
 
+demographics = nirs.createDemographicsTable(SubjStats);
+
 % Get the demographics
 balance_data = readtable('../Park-MOVE_fnirs_dataset_v2/REDcap_data/MiniBEST_data.csv'); 
 w12_data = readtable('../Park-MOVE_fnirs_dataset_v2/REDcap_data/Walk12_data.csv'); 
@@ -56,6 +61,7 @@ hads_data = readtable('../Park-MOVE_fnirs_dataset_v2/REDcap_data/HADS_data.csv')
 updrs_data = readtable('../Park-MOVE_fnirs_dataset_v2/REDcap_data/UPDRS_data.csv'); 
 neuropsych_data = readtable('../Park-MOVE_fnirs_dataset_v2/REDcap_data/Neuropsychological_data.csv'); 
 redcap_data = readtable('../Park-MOVE_fnirs_dataset_v2/REDcap_data/All_REDcap_data.csv'); 
+measurement_data = readtable('../Park-MOVE_fnirs_dataset_v2/measurement_dates.csv'); 
 gait_as_data = readtable('data/mixed_model_parameters.csv'); 
 
 % Prepare the table
@@ -75,6 +81,7 @@ demographics.ledd = NaN(height(demographics),1);
 demographics.dt_cost_stroop_time = NaN(height(demographics),1);
 demographics.prio = NaN(height(demographics),1);
 demographics.edu = NaN(height(demographics),1);
+demographics.disease_dur = NaN(height(demographics),1);
 
 % Add balance data
 for idx=1:height(balance_data)
@@ -126,6 +133,21 @@ for idx=1:height(redcap_data)
     demographics(match_idx,:).edu = redcap_data(idx,:).crf_utbildning_ar;
 end
 
+% Disease duration
+for idx=1:height(measurement_data)
+    subj_id_seek = string(measurement_data.subject(idx)); 
+    match_idx = strcmp(demographics.SubjectID, subj_id_seek);
+    if sum(match_idx) < 1
+        continue
+    end
+    match_idx_redcap = strcmp(redcap_data.id_nummer, subj_id_seek);
+    if sum(match_idx_redcap) < 1
+        continue
+    end
+    measure_year = measurement_data(idx,:).measurement_date_t1.Year;
+    demographics(match_idx,:).disease_dur = measure_year - redcap_data(match_idx_redcap,:).crf_pd_year_phone;
+end
+
 % Gait data
 for idx=1:height(gait_as_data)
     subj_id_seek = string(gait_as_data.subject(idx)); 
@@ -143,8 +165,8 @@ for idx=1:height(gait_as_data)
 end
 
 % Normalize covariates for comparable betas
-demographics(:,37:50) = normalize(demographics(:,37:50), 'norm');
-demographics(:,14) = normalize(demographics(:,14), 'norm');
+demographics(:,37:52) = normalize(demographics(:,37:52), 'zscore');
+demographics(:,14) = normalize(demographics(:,14), 'zscore');
 
 job = nirs.modules.AddDemographics;
 job.demoTable = demographics;
@@ -518,9 +540,71 @@ hypothesis_table = [roi_result_oa_aim1;
 hypothesis_table(:,[10,11]) = [];
 disp(hypothesis_table);
 
-%% Write table 
-
+% Write table 
 writetable(hypothesis_table, results_file)
+
+%% Exploratory
+
+% Select both OA and PD
+selected_idx = zeros(size(SubjStats,2),1);
+selected_idx(oa_idx,1) = 1;
+selected_idx(pd_idx,1) = 1;
+selected_idx = logical(selected_idx);
+SubjStats_diff = SubjStats(selected_idx);
+demographics_diff = nirs.createDemographicsTable(SubjStats_diff);
+
+% Settings
+formula_diff = 'beta ~ -1 + cond:group';
+
+% Run group model
+job = nirs.modules.MixedEffects();
+job.formula = formula_diff;
+job.dummyCoding = 'full';
+job.include_diagnostics = true;
+GroupStats_diff = job.run(SubjStats_diff);
+
+% Draw some figures.
+GroupStats_diff.probe.defaultdrawfcn='3D mesh (frontal)';
+GroupStats_diff.probe = GroupStats_diff.probe.SetFiducials_Visibility(false);
+GroupStats_diff.draw('tstat', [-10 10], 'q < 0.05');
+GroupStats_diff.printAll('tstat', [-10 10], 'q < 0.05', folder_figures, 'png')
+
+% Get some contrasts
+c = [-1 1 0 0 0 0];
+ContrastStats = GroupStats_diff.ttest(c);
+ContrastStats.probe.defaultdrawfcn='3D mesh (frontal)';
+ContrastStats.probe = ContrastStats.probe.SetFiducials_Visibility(false);
+ContrastStats.draw('tstat', [-10 10], 'q < 0.05');
+ContrastStats.printAll('tstat', [-10 10], 'q < 0.05', folder_contrast, 'png')
+contrast_roi_1 = nirs.util.roiAverage(ContrastStats, ROI_PFC, 'PFC');
+
+c = [0 0 -1 1 0 0];
+ContrastStats = GroupStats_diff.ttest(c);
+ContrastStats.probe.defaultdrawfcn='3D mesh (frontal)';
+ContrastStats.probe = ContrastStats.probe.SetFiducials_Visibility(false);
+ContrastStats.draw('tstat', [-10 10], 'q < 0.05');
+ContrastStats.printAll('tstat', [-10 10], 'q < 0.05', folder_contrast, 'png')
+contrast_roi_2 = nirs.util.roiAverage(ContrastStats, ROI_PFC, 'PFC');
+
+c = [0 0 0 0 -1 1];
+ContrastStats = GroupStats_diff.ttest(c);
+ContrastStats.probe.defaultdrawfcn='3D mesh (frontal)';
+ContrastStats.probe = ContrastStats.probe.SetFiducials_Visibility(false);
+ContrastStats.draw('tstat', [-10 10], 'q < 0.05');
+ContrastStats.printAll('tstat', [-10 10], 'q < 0.05', folder_contrast, 'png')
+contrast_roi_3 = nirs.util.roiAverage(ContrastStats, ROI_PFC, 'PFC');
+
+%% Summarize 
+
+contrast_table = [contrast_roi_1; 
+    contrast_roi_2;
+    contrast_roi_3;];
+
+% Drop unneeded columns
+contrast_table(:,[10]) = [];
+disp(contrast_table);
+
+writetable(contrast_table, results_file_contrast)
 
 %% Check assumptions
 

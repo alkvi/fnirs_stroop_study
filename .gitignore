@@ -5,3 +5,5 @@ data
 *.png
 etc
 *.asv
+docs/*.docx
+figures

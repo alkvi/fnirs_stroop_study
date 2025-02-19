@@ -401,6 +401,7 @@ ggqqplot(all_subject_data, x = "weight", facet.by = "group", ylab = "weight")
 ggqqplot(all_subject_data, x = "crf_utbildning_ar", facet.by = "group", ylab = "crf_utbildning_ar")
 ggqqplot(all_subject_data, x = "mb_total", facet.by = "group", ylab = "balance")
 ggqqplot(all_subject_data, x = "g12_sum", facet.by = "group", ylab = "walk12")
+ggqqplot(all_subject_data, x = "tmt_4", facet.by = "group", ylab = "tmt4")
 
 # Non-normal: age, edu (ya), height (pd), weight (pd), balance, walk12.
 ```

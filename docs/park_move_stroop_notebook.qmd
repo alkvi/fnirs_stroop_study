@@ -11,6 +11,8 @@ format:
     toc-expand: 2
     theme: flatly
     output-file: index.html
+  docx:
+    toc: false
   
 editor: source
 ---
@@ -45,7 +47,7 @@ library(ggstatsplot)
 
 # Introduction
 
-This document is intended to be used as an "open lab notebook" for an fNIRS study on dual-task walking, analyzing an existing dataset, the Park-MOVE dataset collected between 2021 and 2023 [@franzenParkMOVEFNIRSStudy2023]. Note that while the data is in a central repository, access to the data is restricted and regulated by data transfer agreements. 
+This document is intended to be used as an "open lab notebook" for an fNIRS study on dual-task walking, analyzing an existing dataset, the Park-MOVE dataset collected between 2021 and 2023 [@franzenParkMOVEFNIRSStudy2023]. Note that while the data is in a central repository, access to the data is restricted and regulated by data transfer agreements.
 
 To provide transparent and systematic support for the findings of the study, this document is updated throughout the study and contains:
 
@@ -61,7 +63,9 @@ To provide transparent and systematic support for the findings of the study, thi
 
 -   Model validation and robustness analyses
 
-This document is stored at OSF: <https://osf.io/m7tx6/>
+This document is stored on GitHub pages: <https://alkvi.github.io/fnirs_stroop_study/>
+
+Version 1 was stored at OSF: <https://osf.io/m7tx6/>
 
 How the dataset used in this study was prepared can be found in: <https://github.com/alkvi/fnirs_dataset_preparation>
 
@@ -72,6 +76,7 @@ How the dataset used in this study was prepared can be found in: <https://github
 | 1 | 2024-12-09 | First version, with analysis plan |
 | 2 | 2025-02-12 | Analyses performed, model diagnostics and outlier analysis done. One subject included in rev1 was excluded (after re-evaluating exclusion criteria). Moved format to Quarto. |
 | 3 | 2025-02-14 | Update aim 3 to control for education, add details on missing data |
+| 4 | 2025-02-19 | Changed correlation method in aim 3 behavioral part to Spearman (more robust), added exploratory analysis of PFC activation difference between groups, added signal quality metrics, used z-score normalization of covariates for more evenly scaled betas (does not affect statistical test values which are the same as before) |
 
 : Version history
 
@@ -123,14 +128,14 @@ Gait parameters (e.g., step time and walking speed) were collected using three w
 
 Analysis of fNIRS data was performed in the MATLAB NIRS AnalyzIR toolbox [@santosa2018]. The raw optical density fNIRS data was converted into ΔHbO2 and ΔHHb using the modified Beer-Lambert law [@delpy1988] with the differential path-length factor (DPF) dependent on age [@scholkmann2013]. The first level (subject level) analysis employed a general linear model (GLM), using pre-whitening and an autoregressive model (AR-IRLS) [@barker2013] to reduce systemic physiology and motion-induced artifacts. Short-separation channels were used as regressors to further filter out physiological noise. A canonical hemodynamic response function (HRF) was assumed. A ROI analysis of the whole PFC is performed.
 
+Analyses used a combined form of oxygenated (HbO) and deoxygenated (HbR) hemoglobin, in terms of correlation-based signal improvement (CBSI) [@cui2010]. While often used as a movement artifact correction method, this can be considered as a version of the oxygenated hemoglobin scaled for anticorrelation with the deoxygenated hemoglobin, incorporating information from both into one signal.
+
 The second level (group) analysis is detailed in the analysis section.
 
 # Process data
 
-:::: {.content-visible when-format="html"}
 ::: {.content-visible when-format="html"}
 Code block - load data files
-:::
 
 ```{r}
 
@@ -147,7 +152,7 @@ acc_file <- paste("../../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_ac
 selected_roi <- "PFC"
 
 # How handle correlations?
-corr_method <- "pearson"
+corr_method <- "spearman"
 
 # Do we filter any subjects?
 filter_subjects <- c("NA")
@@ -162,7 +167,7 @@ identifiers_pd <- read.csv(csv_path)
 
 
 ```
-::::
+:::
 
 ::: {.content-visible when-format="html"}
 Code block - process data files, calculate dual-task effects, create subject means
@@ -497,6 +502,7 @@ Combined with the task data in the tables above, where we can observe a signific
 
 ## Quadrant
 
+::: {.content-visible when-format="html"}
 ```{r}
 #| warning: false
 
@@ -538,6 +544,7 @@ p
 
 
 ```
+:::
 
 # Planned analysis (proposed model)
 
@@ -689,18 +696,19 @@ We have a pilot study (<https://doi.org/10.1002/brb3.2948)> where we analysed th
 
 # Performed analysis
 
-Subject-level fNIRS analysis can be found in [park_move_protocol_1_subject_analysis.m](park_move_protocol_1_subject_analysis.m)
+Subject-level fNIRS analysis can be found in [park_move_protocol_1_subject_analysis.m](https://github.com/alkvi/fnirs_stroop_study/blob/main/park_move_protocol_1_subject_analysis.m)
 
-Group-level fNIRS analysis can be found in [park_move_protocol_1_group_analysis.m](park_move_protocol_1_group_analysis.m)
+Group-level fNIRS analysis can be found in [park_move_protocol_1_group_analysis.m](https://github.com/alkvi/fnirs_stroop_study/blob/main/park_move_protocol_1_group_analysis.m)
 
 Missing data compared to original targets are:
 
-- 3 OA (1 after re-evaluating criteria, 2 not following protocol), 2 were also missing gait data (data loss during protocol).
-- 3 PD (1 data loss, 1 not following protocol, 1 not completing protocol), 2 were also missing MDS-UPDRS data.
-- Amount of included subjects in each model is indicated in included_n.
+-   3 OA (1 after re-evaluating criteria, 2 not following protocol), 2 were also missing gait data (data loss during protocol).
+-   3 PD (1 data loss, 1 not following protocol, 1 not completing protocol), 2 were also missing MDS-UPDRS data.
+-   Amount of included subjects in each model is indicated in included_n.
+
+The disease_severity variable in the PD models was decided as MDS-UPDRS 3 motor score, after comparing the Akaike Information Criterion (AIC) for models utilizing each variable (and LEDD was skipped due to too many missing values).
 
 The group-level results (output from linear models) is exported to csv and read below.
-
 
 ```{r}
 
@@ -853,7 +861,9 @@ table_aim_2_3 %>%
 
 ### Behavioral
 
-:::{.column-page}
+Note that this is Spearman correlation instead of planned Pearson, because there are outliers in the PD data that we want the statistics to be robust against.
+
+::: column-page
 ```{r}
 #| warning: false
 
@@ -863,7 +873,7 @@ gg_point_1 = ggplot(data = oa_data, aes(x = tmt_4, y = dt_cost_walk_speed_protoc
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color="red") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   stat_cor(label.y = 14, method = corr_method, size = 4) +
-  coord_cartesian(xlim =c(20,230), ylim = c(-10, 15)) +
+  coord_cartesian(xlim =c(20,235), ylim = c(-10, 15)) +
   labs(x = "TMT-B", y = "DT cost speed (%)", title = "OA") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
@@ -872,7 +882,7 @@ gg_point_2 = ggplot(data = pd_data, aes(x = tmt_4, y = dt_cost_walk_speed_protoc
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color = "green") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   stat_cor(label.y = 14, method = corr_method, size = 4) +
-  coord_cartesian(xlim =c(20,230), ylim = c(-10, 15)) +
+  coord_cartesian(xlim =c(20,235), ylim = c(-10, 15)) +
   labs(x = "TMT-B", y = "DT cost speed (%)", title = "PD") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
@@ -883,7 +893,7 @@ gg_point_3 = ggplot(data = oa_data, aes(x = tmt_4, y = dt_cost_stroop_time)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color="red") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   stat_cor(label.y = 14, method = corr_method, size = 4) +
-  coord_cartesian(xlim =c(20,230), ylim = c(-10, 15)) +
+  coord_cartesian(xlim =c(20,235), ylim = c(-10, 15)) +
   labs(x = "TMT-B", y = "DT cost stroop (%)", title = "OA") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
@@ -892,7 +902,7 @@ gg_point_4 = ggplot(data = pd_data, aes(x = tmt_4, y = dt_cost_stroop_time)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color = "green") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   stat_cor(label.y = 14, method = corr_method, size = 4) +
-  coord_cartesian(xlim =c(20,230), ylim = c(-10, 15)) +
+  coord_cartesian(xlim =c(20,235), ylim = c(-10, 15)) +
   labs(x = "TMT-B", y = "DT cost stroop (%)", title = "PD") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
@@ -953,8 +963,136 @@ Outliers were evaluated in the Residual-Leverage and influence plots in [model v
 
 There were a few outliers, more in the OA group than in the PD group. The RemoveOutlierSubjects.m function showed 2 outlier subjects in OA, and 1 in PD. These corresponded to large circles in the influence plots.
 
-Re-running the analysis without the outlier subjects resulted in slightly different beta values, but significant effects in each aim remained mostly the same, except a few condition effects (ST_stand for OA in aim 1, DT_walk for PD in aim 2, ST_stand for OA in aim 3). The difference were in those condition effects which were hovering around FDR-adjusted p .05. 
+Re-running the analysis without the outlier subjects resulted in slightly different beta values, but significant effects in each aim remained mostly the same, except a few condition effects (ST_stand for OA in aim 1, DT_walk for PD in aim 2, ST_stand for OA in aim 3). The difference were in those condition effects which were hovering around FDR-adjusted p .05.
 
 This points to robust results for the effects of interest (step time variability, age, DT costs), and mostly robust results for condition effects.
+
+# Exploratory - PFC activity visualization and comparison
+
+## Visualization
+
+Below is PFC activity per channel visualized for OA, PD, and the contrast PD - OA.
+
+Color scale indicates T value. Red indicates an increase in BOLD activity for a channel, blue a decrease. The increase/decrease is always from baseline (standing still without a task) to active condition.
+
+In the contrasts, blue thus means OA \> PD and red means PD \> OA.
+
+Significant increases (FDR p \< .05) are indicated as solid lines.
+
+**Condition 1 - standing auditory stroop**
+
+A few significant channels in each group: decrease for OA and increase for PD. No channel in the contrast had a significant diffrence on its own.
+
+::: {layout-ncol="3"}
+![OA](../figures/Stand_still_and_Aud_Stroop__group_OA_cbsi.png)
+
+![PD](../figures/Stand_still_and_Aud_Stroop__group_PD_cbsi.png)
+
+![Contrast](../figures/-Stand_still_and_Aud_Stroop__group_OA+Stand_still_and_Aud_Stroop__group_PD_cbsi.png)
+:::
+
+**Condition 2 - straight walking**
+
+OA had more of an increase than PD.
+
+::: {layout-ncol="3"}
+![OA](../figures/Straight_walking__group_OA_cbsi.png)
+
+![PD](../figures/Straight_walking__group_PD_cbsi.png)
+
+![Contrast](../figures/-Straight_walking__group_OA+Straight_walking__group_PD_cbsi.png)
+:::
+
+**Condition 3 - dual-task walking**
+
+OA had more of an increase than PD.
+
+::: {layout-ncol="3"}
+![OA](../figures/Straight_walking_and_Aud_Stroop__group_OA_cbsi.png)
+
+![PD](../figures/Straight_walking_and_Aud_Stroop__group_PD_cbsi.png)
+
+![Contrast](../figures/-Straight_walking_and_Aud_Stroop__group_OA+Straight_walking_and_Aud_Stroop__group_PD_cbsi.png)
+:::
+
+## Contrast ROI
+
+The following model on increase in PFC activity per group was run:
+
+```         
+beta ~ -1 + condition:group
+```
+
+Then, the contrast PD - OA was taken for each condition. Results are in the table below.
+
+Results are as seen above: OA had more PFC activity in the walking conditions, while PD had more in the standing auditory stroop condition.
+
+```{r}
+#| warning: false
+
+# Read contrasts
+contrast_file <- "../data/results_table_cbsi_protocol_1_contrast.csv"
+contrast_data <- read.csv(contrast_file)
+contrast_data <- contrast_data %>%
+  select(-type, -ROI, -q) %>%
+  rename(Condition = Contrast)
+
+# Nicer names
+contrast_data$Condition <- gsub("-Stand_still_and_Aud_Stroop:group_OA\\+Stand_still_and_Aud_Stroop:group_PD", "ST_stand",
+                                contrast_data$Condition)
+contrast_data$Condition <- gsub("-Straight_walking:group_OA\\+Straight_walking:group_PD", "ST_walk", 
+                                contrast_data$Condition)
+contrast_data$Condition <- gsub("-Straight_walking_and_Aud_Stroop:group_OA\\+Straight_walking_and_Aud_Stroop:group_PD", "DT_walk",
+                                contrast_data$Condition)
+# Display
+contrast_data %>%
+  gt() %>%
+  fmt_number(
+    columns = everything(),
+    decimals = 3
+  )
+  
+```
+
+# Signal quality
+
+fNIRS signal quality in each condition was calculated using MNE-NIRS and QT-NIRS: <https://github.com/alkvi/fnirs_dataset_preparation>
+
+```{r}
+#| warning: false
+
+quality_path_sci <- "../data/signal_quality_sci.csv"
+quality_path_psp <- "../data/signal_quality_power.csv"
+sci_data <- read.csv(quality_path_sci)
+psp_data <- read.csv(quality_path_psp)
+
+# Select protocol 1
+sci_data <- subset(sci_data, protocol == "protocol1")
+psp_data <- subset(psp_data, protocol == "protocol1")
+
+# Get averages of all blocks per subject
+psp_data_avg <- psp_data %>%
+  group_by(protocol, condition) %>%
+  summarise(mean_power = mean(power, na.rm = TRUE),
+            mean_power_std = mean(power_std, na.rm = TRUE),
+            .groups='drop')
+
+# Add SCI
+quality_data <- merge(psp_data_avg, sci_data, by = "condition", all = TRUE)
+quality_data <- quality_data[c("condition", "mean_power", "mean_power_std", "sci", "sci_std")]
+names(quality_data)[names(quality_data) == "mean_power"] <- "Peak Spectral Power"
+names(quality_data)[names(quality_data) == "mean_power_std"] <- "Peak Spectral Power (STD)"
+names(quality_data)[names(quality_data) == "sci"] <- "Scalp Coupling Index"
+names(quality_data)[names(quality_data) == "sci_std"] <- "Scalp Coupling Index (STD)"
+
+# Display
+quality_data %>%
+  gt() %>%
+  fmt_number(
+    columns = everything(),
+    decimals = 3
+  )
+  
+```
 
 # References
