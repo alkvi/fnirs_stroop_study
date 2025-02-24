@@ -6,4 +6,5 @@ data
 etc
 *.asv
 docs/*.docx
+docs/manuscript.qmd
 figures

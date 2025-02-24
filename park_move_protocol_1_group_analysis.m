@@ -267,6 +267,11 @@ roi_result_oa_aim1.included_n = repmat(GroupStats_oa.demographics.included_subje
 nan_idx = isnan(demographics_oa.st_step_time_var) | isnan(demographics_oa.age);
 roi_result_oa_aim1.included_n = roi_result_oa_aim1.included_n - sum(nan_idx);
 
+% Write which subjects were included
+subjects_aim1 = demographics_oa.SubjectID;
+subjects_aim1(nan_idx) = [];
+writecell(subjects_aim1, "data/subjects_aim1_oa.csv")
+
 [AIC, BIC] = PlotDiagnostics(roi_result_pd_aim1.model{1}, "PD_model_1" , covar);
 roi_result_pd_aim1.formula = repmat(string(formula_pd), size(roi_result_pd_aim1,1),1);
 roi_result_pd_aim1.AIC = repmat(AIC, size(roi_result_pd_aim1,1),1);
@@ -277,6 +282,11 @@ roi_result_pd_aim1.comment = repmat("Aim 1", size(roi_result_pd_aim1,1),1);
 roi_result_pd_aim1.included_n = repmat(GroupStats_pd.demographics.included_subjects_n, size(roi_result_pd_aim1,1),1);
 nan_idx = isnan(demographics_pd.st_step_time_var) | isnan(demographics_pd.age) | isnan(demographics_pd.updrs_3_motor);
 roi_result_pd_aim1.included_n = roi_result_pd_aim1.included_n - sum(nan_idx);
+
+% Write which subjects were included
+subjects_aim1 = demographics_pd.SubjectID;
+subjects_aim1(nan_idx) = [];
+writecell(subjects_aim1, "data/subjects_aim1_pd.csv")
 
 %% Aim 2 
 
