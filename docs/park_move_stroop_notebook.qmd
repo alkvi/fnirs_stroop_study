@@ -77,6 +77,7 @@ How the dataset used in this study was prepared can be found in: <https://github
 | 2 | 2025-02-12 | Analyses performed, model diagnostics and outlier analysis done. One subject included in rev1 was excluded (after re-evaluating exclusion criteria). Moved format to Quarto. |
 | 3 | 2025-02-14 | Update aim 3 to control for education, add details on missing data |
 | 4 | 2025-02-19 | Changed correlation method in aim 3 behavioral part to Spearman (more robust), added exploratory analysis of PFC activation difference between groups, added signal quality metrics, used z-score normalization of covariates for more evenly scaled betas (does not affect statistical test values which are the same as before) |
+| 5 | 2025-04-14 | Added subject-level ROI correlation to step time variability, exploration of LEDD |
 
 : Version history
 
@@ -147,9 +148,11 @@ time_file <- paste("../../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_a
 demo_file <- paste("../../Park-MOVE_fnirs_dataset_v2/basic_demographics.csv", sep="")
 redcap_file <- paste("../../Park-MOVE_fnirs_dataset_v2/REDcap_data/All_REDcap_data.csv", sep="")
 acc_file <- paste("../../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_accuracy.csv", sep="")
+updrs_file <- paste("../../Park-MOVE_fnirs_dataset_v2/REDcap_data/UPDRS_data.csv", sep="")
 
 # Which ROI?
 selected_roi <- "PFC"
+subject_roi_file <- paste("../data/subject_level_ROI_beta_cbsi_", selected_roi, ".csv", sep="")
 
 # How handle correlations?
 corr_method <- "spearman"
@@ -226,11 +229,11 @@ gait_data <- gait_data %>%
          Stride.Length.LR = (Stride.Length.L + Stride.Length.R) / 2,
          Walking.Speed.LR = (Walking.Speed.L + Walking.Speed.R) / 2,
          trial_type = recode(trial_type, 
+                             'Navigation_and_Aud_Stroop' = 'DT_navigation',
                              'Navigation' = 'ST_navigation', 
-                             'Straight_walking' = 'ST_walk', 
                              'Straight_walking_and_Aud_Stroop' = 'DT_walk', 
-                             'Navigated_walking' = 'ST_navigation', 
-                             'Navigation_and_Aud_Stroop' = 'DT_navigation')) %>%
+                             'Straight_walking' = 'ST_walk', 
+                             'Navigated_walking' = 'ST_navigation')) %>%
   filter(trial_type != "Stand_still_and_Aud_Stroop")
 
 # Get averages of all blocks per subject
@@ -349,7 +352,6 @@ as_data_wide <- merge(acc_data_wide, stroop_time_subject_means_wide, by = "subje
 as_data_wide <- assign_group(as_data_wide, identifiers_ya, identifiers_oa, identifiers_pd)
 as_data_wide <- as_data_wide[!as_data_wide$group == 'YA', ]
 
-
 # Split into different groups
 all_subject_data <- merge(all_subject_data, all_gait_data, by = "subject", all = TRUE)
 all_subject_data <- merge(all_subject_data, as_data_wide[c("subject", "dt_cost_stroop_time")], by = "subject", all = TRUE)
@@ -361,6 +363,30 @@ oa_data <- all_subject_data[all_subject_data$group == 'OA', ]
 oa_data <- oa_data[!is.na(oa_data$subject),]
 pd_data <- all_subject_data[all_subject_data$group == 'PD', ]
 pd_data <- pd_data[!is.na(pd_data$subject),]
+
+# Process subject ROI data
+subject_roi_data = read.csv(subject_roi_file)
+colnames(subject_roi_data)[colnames(subject_roi_data) == "Contrast"] <- "Condition"
+subject_roi_data[subject_roi_data=="Stand_still_and_Aud_Stroop"] <- "C1_ST_stand"
+subject_roi_data[subject_roi_data=="Straight_walking"] <- "C2_ST_walk"
+subject_roi_data[subject_roi_data=="Straight_walking_and_Aud_Stroop"] <- "C3_DT_walk"
+
+# Factor code some variables
+subject_roi_data$Condition <- as.factor(subject_roi_data$Condition)
+
+# Convert to ms for nicer plotting
+subject_roi_data$st_step_time_var <- subject_roi_data$st_step_time_var * 1000
+subject_roi_data$dt_step_time_var <- subject_roi_data$dt_step_time_var * 1000
+
+# Split into groups and get variables to plot
+grouped_dataframes <- split(subject_roi_data, subject_roi_data$group)
+data_OA <- grouped_dataframes$OA
+data_PD <- grouped_dataframes$PD
+data_oa_c2 <- data_OA %>% filter(Condition == "C2_ST_walk") %>% select(step_time_var = st_step_time_var, Beta, group)
+data_oa_c3 <- data_OA %>% filter(Condition == "C3_DT_walk") %>% select(step_time_var = dt_step_time_var, Beta, group)
+data_pd_c2 <- data_PD %>% filter(Condition == "C2_ST_walk") %>% select(step_time_var = st_step_time_var, Beta, group)
+data_pd_c3 <- data_PD %>% filter(Condition == "C3_DT_walk") %>% select(step_time_var = dt_step_time_var, Beta, group)
+subject_roi_data_combined <- bind_rows(data_oa_c2, data_oa_c3, data_pd_c2, data_pd_c3)
 
 ```
 :::
@@ -721,8 +747,8 @@ group_stats <- group_stats %>%
   rename(Condition = Contrast,
          Aim = comment) %>%
   mutate(Condition = str_replace_all(Condition, c("Stand_still_and_Aud_Stroop" = "ST_stand", 
-                                        "Straight_walking" = "ST_walk",
                                         "Straight_walking_and_Aud_Stroop" = "DT_walk",
+                                        "Straight_walking" = "ST_walk",
                                         "step_time_var" = "Step time variability",
                                         "3_motor" = "UPDRS 3 Motor")))
   
@@ -773,6 +799,22 @@ table_aim_1 %>%
     label = md("**Group: PD**"),
     rows = group == "PD"
   )
+
+```
+
+```{r}
+#| warning: false
+
+# Note: there are 5 NaN rows where subjects lack gait data for certain conditions
+ggplot(subject_roi_data_combined, aes(x = step_time_var, y = Beta)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  coord_cartesian(xlim = c(0, 100), ylim = c(-6, 15)) +
+  labs(x = "Step Time Variability (ms)", y = "Beta", title = "Correlation between Beta and Step Time Var") +
+  stat_cor(label.y = 11) +
+  theme_light() +
+  theme(text = element_text(size = 20), axis.text.y = element_text(size = 20), plot.title = element_text(hjust = 0.5)) +
+  facet_wrap(~ group)
 
 ```
 
@@ -1053,6 +1095,81 @@ contrast_data %>%
   )
   
 ```
+
+# LEDD
+
+The model in the primary aim was also controlled for levodopa equivalent daily dose (LEDD).
+
+There was a significant effect of UPDRS III, step time variability, and LEDD.
+
+The correlation between UPDRS III, step time variability and LEDD was also controlled; there was no correlation.
+
+Note that the LEDD variable has several missing values and only 31 subjects remained in the model, so results should be carefully interpreted.
+
+```{r}
+#| warning: false
+
+ledd_result_file <- paste("../data/results_table_cbsi_protocol_1_ledd.csv", sep="")
+ledd_result <- read.csv(ledd_result_file)
+ledd_result <- ledd_result %>%
+  select(-AIC, -BIC, -formula, -type, -ROI) %>%
+  rename(Condition = Contrast,
+         Aim = comment) %>%
+  mutate(Condition = str_replace_all(Condition, c("Stand_still_and_Aud_Stroop" = "ST_stand",
+                                        "Straight_walking_and_Aud_Stroop" = "DT_walk",
+                                        "Straight_walking" = "ST_walk",
+                                        "step_time_var" = "Step time variability",
+                                        "3_motor" = "UPDRS 3 Motor",
+                                        "ledd" = "LEDD")))
+ledd_result <- ledd_result %>% select(1:6, q, everything())
+ledd_result %>%
+  gt() %>%
+  fmt_number(
+    columns = c(included_n, DF),
+    decimals = 0
+  ) %>%
+  fmt_number(
+    columns = -c(included_n, DF),
+    decimals = 3
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      rows = q < 0.05
+    )
+  )
+  
+updrs_data <- read.csv(updrs_file)
+updrs_data$updrs_3_total <- rowSums(updrs_data[, 35:66], na.rm = TRUE)
+updrs_data <- updrs_data[c("id_nummer", "updrs_3_total", "mdsupdrs3_hy")]
+names(updrs_data)[names(updrs_data) == 'id_nummer'] <- 'subject'
+
+ledd_updrs = all_subject_data %>% filter(group == "PD") 
+ledd_updrs = ledd_updrs[c("subject", "group", "age", "led_total", "step_time_variability_protocol1_ST_walk")]
+ledd_updrs <- merge(ledd_updrs, updrs_data, by = "subject", all = FALSE)
+
+plot1 <- ggplot(data = ledd_updrs, aes(x = led_total, y = updrs_3_total, color=mdsupdrs3_hy)) +
+  geom_point_interactive(aes(tooltip = subject, data_id = subject)) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  stat_cor(label.y = 40, method = corr_method, size = 4) +
+  labs(x = "LEDD (mg)", y = "UPDRS III", title = "LEDD to UPDRS III") +
+  geom_hline(yintercept=32, linetype="dashed", color = "black") +
+  geom_hline(yintercept=59, linetype="dashed", color = "black") +
+  theme_minimal()
+
+plot2 <- ggplot(data = ledd_updrs, aes(x = led_total, y = step_time_variability_protocol1_ST_walk, color=mdsupdrs3_hy)) +
+  geom_point_interactive(aes(tooltip = subject, data_id = subject)) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  stat_cor(label.y = 70, method = corr_method, size = 4) +
+  labs(x = "LEDD (mg)", y = "Step time variability (ms)", title = "LEDD to step time variability") +
+  theme_minimal()
+
+plot_grid(plotlist=list(plot1, plot2), nrow=2)
+
+
+  
+```
+
 
 # Signal quality
 

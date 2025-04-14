@@ -12,6 +12,7 @@ hemo_measure = "cbsi";
 subjstats_file = "../Park-MOVE_fnirs_dataset_v2/mat_files/SubjStats_setup_1_" + hemo_measure + ".mat";
 results_file = "data/results_table_" + hemo_measure + "_protocol_1.csv";
 results_file_contrast = "data/results_table_" + hemo_measure + "_protocol_1_contrast.csv";
+results_file_ledd = "data/results_table_" + hemo_measure + "_protocol_1_ledd.csv";
 folder_figures = "figures";
 folder_contrast = "figures";
 
@@ -553,7 +554,7 @@ disp(hypothesis_table);
 % Write table 
 writetable(hypothesis_table, results_file)
 
-%% Exploratory
+%% Exploratory - contrasts
 
 % Select both OA and PD
 selected_idx = zeros(size(SubjStats,2),1);
@@ -615,6 +616,32 @@ contrast_table(:,[10]) = [];
 disp(contrast_table);
 
 writetable(contrast_table, results_file_contrast)
+
+%% Exploratory - test LEDD (compare with primary aim)
+
+formula_pd = 'beta ~ -1 + cond + age + updrs_3_motor + st_step_time_var + ledd';
+
+job = nirs.modules.MixedEffects();
+job.formula = formula_pd;
+job.dummyCoding = 'full';
+job.include_diagnostics = true;
+job.robust = true;
+GroupStats_pd = job.run(SubjStats_pd);
+
+% Collect results
+roi_result_pd_ledd = nirs.util.roiAverage(GroupStats_pd, ROI_PFC, 'PFC');
+[AIC, BIC] = PlotDiagnostics(roi_result_pd_ledd.model{1}, "PD_model_LEDD" , "ledd");
+roi_result_pd_ledd.formula = repmat(string(formula_pd), size(roi_result_pd_ledd,1),1);
+roi_result_pd_ledd.AIC = repmat(AIC, size(roi_result_pd_ledd,1),1);
+roi_result_pd_ledd.BIC = repmat(AIC, size(roi_result_pd_ledd,1),1);
+roi_result_pd_ledd.group = repmat("PD", size(roi_result_pd_ledd,1),1);
+roi_result_pd_ledd.comment = repmat("LEDD", size(roi_result_pd_ledd,1),1);
+roi_result_pd_ledd.included_n = repmat(GroupStats_pd.demographics.included_subjects_n, size(roi_result_pd_ledd,1),1);
+nan_idx = isnan(demographics_pd.st_step_time_var) | isnan(demographics_pd.age) | isnan(demographics_pd.updrs_3_motor) | isnan(demographics_pd.ledd);
+roi_result_pd_ledd.included_n = roi_result_pd_ledd.included_n - sum(nan_idx);
+roi_result_pd_ledd(:,[10, 11]) = [];
+
+writetable(roi_result_pd_ledd, results_file_ledd)
 
 %% Check assumptions
 
