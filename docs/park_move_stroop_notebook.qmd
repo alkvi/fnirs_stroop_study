@@ -78,6 +78,7 @@ How the dataset used in this study was prepared can be found in: <https://github
 | 3 | 2025-02-14 | Update aim 3 to control for education, add details on missing data |
 | 4 | 2025-02-19 | Changed correlation method in aim 3 behavioral part to Spearman (more robust), added exploratory analysis of PFC activation difference between groups, added signal quality metrics, used z-score normalization of covariates for more evenly scaled betas (does not affect statistical test values which are the same as before) |
 | 5 | 2025-04-14 | Added subject-level ROI correlation to step time variability, exploration of LEDD |
+| 6 | 2025-04-25 | Model statistics and formatting |
 
 : Version history
 
@@ -141,7 +142,6 @@ Code block - load data files
 ```{r}
 
 # Load and prepare all data
-
 var_data_path <- "../../Park-MOVE_fnirs_dataset_v2/IMU_data/imu_variability_parameters.csv"
 gait_path <- "../../Park-MOVE_fnirs_dataset_v2/IMU_data//imu_gait_parameters.csv"
 time_file <- paste("../../Park-MOVE_fnirs_dataset_v2/Task_data/auditory_stroop_answer_time.csv", sep="")
@@ -736,8 +736,9 @@ The disease_severity variable in the PD models was decided as MDS-UPDRS 3 motor 
 
 The group-level results (output from linear models) is exported to csv and read below.
 
-```{r}
+The model statistics come from the underlying GroupStats model in the NIRS toolbox, where an ANOVA was run on the linear model with the function anova(model, 'summary'), see [MATLAB documentation](https://se.mathworks.com/help/stats/linearmodel.anova.html) and relevant [fork commit](https://github.com/alkvi/nirs-toolbox-fork/commit/402acef1f4c1dec256a71b322b267c69709760d1).
 
+```{r}
 
 # Load fNIRS model results
 group_stats_file <- "../data/results_table_cbsi_protocol_1.csv"
@@ -745,29 +746,38 @@ group_stats <- read.csv(group_stats_file)
 group_stats <- group_stats %>%
   select(-AIC, -BIC, -formula, -type, -ROI, -q) %>%
   rename(Condition = Contrast,
-         Aim = comment) %>%
+         Aim = comment,
+         N = included_n) %>%
   mutate(Condition = str_replace_all(Condition, c("Stand_still_and_Aud_Stroop" = "ST_stand", 
                                         "Straight_walking_and_Aud_Stroop" = "DT_walk",
                                         "Straight_walking" = "ST_walk",
                                         "step_time_var" = "Step time variability",
-                                        "3_motor" = "UPDRS 3 Motor")))
-  
+                                        "3_motor" = "UPDRS 3 Motor",
+                                        "cost_walk_speed" = "DT cost walking speed",
+                                        "cost_stroop_time" = "DT cost Stroop reaction time",
+                                        "prio" = "Priority")))
+
+# Format summary stats columns
+group_stats$Fstat <- sapply(group_stats$Fstat, format, digits = 3, nsmall = 3)
+group_stats$Fstat_p <- ifelse(group_stats$Fstat_p < 0.001, "<.001", format(group_stats$Fstat_p, digits = 3, nsmall = 3))
+group_stats$Rsquared <- sapply(group_stats$Rsquared, format, digits = 3, nsmall = 3)
+group_stats$Rsquared_adj <- sapply(group_stats$Rsquared_adj, format, digits = 3, nsmall = 3)
 
 # FDR-Adjust p-values per aim so both groups are included
 table_aim_1 <- group_stats %>% filter(Aim == "Aim 1")
-table_aim_1$p_adjust <- p.adjust(table_aim_1$p, method="BH")
-table_aim_1 <- table_aim_1 %>% select(1:6, p_adjust, everything())
+table_aim_1$p_adjusted <- p.adjust(table_aim_1$p, method="BH")
+table_aim_1 <- table_aim_1 %>% select(1:6, p_adjusted, everything())
 
 table_aim_2 <- group_stats %>% filter(str_detect(Aim, "Aim 2"))
-table_aim_2$p_adjust <- p.adjust(table_aim_2$p, method="BH")
-table_aim_2 <- table_aim_2 %>% select(1:6, p_adjust, everything())
+table_aim_2$p_adjusted <- p.adjust(table_aim_2$p, method="BH")
+table_aim_2 <- table_aim_2 %>% select(1:6, p_adjusted, everything())
 table_aim_2_1 <- table_aim_2 %>% filter(Aim == "Aim 2_1") 
 table_aim_2_2 <- table_aim_2 %>% filter(Aim == "Aim 2_2") 
 table_aim_2_3 <- table_aim_2 %>% filter(Aim == "Aim 2_3") 
 
 table_aim_3 <- group_stats %>% filter(Aim == "Aim 3")
-table_aim_3$p_adjust <- p.adjust(table_aim_3$p, method="BH")
-table_aim_3 <- table_aim_3 %>% select(1:6, p_adjust, everything())
+table_aim_3$p_adjusted <- p.adjust(table_aim_3$p, method="BH")
+table_aim_3 <- table_aim_3 %>% select(1:6, p_adjusted, everything())
 
 ```
 
@@ -775,30 +785,51 @@ table_aim_3 <- table_aim_3 %>% select(1:6, p_adjust, everything())
 
 ```{r}
 
+fstat_OA <- table_aim_1$Fstat[which(table_aim_1$group == "OA")[1]]
+fstat_p_OA <- table_aim_1$Fstat_p[which(table_aim_1$group == "OA")[1]]
+rsq_OA <- table_aim_1$Rsquared[which(table_aim_1$group == "OA")[1]]
+rsq_adj_OA <- table_aim_1$Rsquared_adj[which(table_aim_1$group == "OA")[1]]
+
+fstat_PD <- table_aim_1$Fstat[which(table_aim_1$group == "PD")[1]]
+fstat_p_PD <- table_aim_1$Fstat_p[which(table_aim_1$group == "PD")[1]]
+rsq_PD <- table_aim_1$Rsquared[which(table_aim_1$group == "PD")[1]]
+rsq_adj_PD <- table_aim_1$Rsquared_adj[which(table_aim_1$group == "PD")[1]]
+
+oa_header <- str_glue("**Group: OA**<br>Model: R square {rsq_OA}, R square (adjusted) {rsq_adj_OA}, F {fstat_OA}, p {fstat_p_OA}")
+pd_header <- str_glue("**Group: PD**<br>Model: R square {rsq_PD}, R square (adjusted) {rsq_adj_PD}, F {fstat_PD}, p {fstat_p_PD}")
+
 table_aim_1 %>%
   gt() %>%
+  cols_hide(columns = c("Aim", "Fstat", "Fstat_p", "Rsquared", "Rsquared_adj")) %>%
   fmt_number(
-    columns = c(included_n, DF),
-    decimals = 0
+    columns = everything(),
+    decimals = 2
   ) %>%
   fmt_number(
-    columns = -c(included_n, DF),
-    decimals = 3
+    columns = c(N, DF),
+    decimals = 0
+  ) %>%
+  fmt(
+    columns = c(p, p_adjusted),
+    fns = function(x) {
+      ifelse(x < 0.001, "<.001", sprintf("%.3f", x))
+    }
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_body(
-      rows = p_adjust < 0.05
+      rows = p_adjusted < 0.05
     )
   ) %>%
   tab_row_group(
-    label = md("**Group: OA**"),
+    label = md(oa_header),
     rows = group == "OA"
   ) %>%
   tab_row_group(
-    label = md("**Group: PD**"),
+    label = md(pd_header),
     rows = group == "PD"
   )
+
 
 ```
 
@@ -822,78 +853,139 @@ ggplot(subject_roi_data_combined, aes(x = step_time_var, y = Beta)) +
 
 ```{r}
 
+fstat_OA <- table_aim_2_1$Fstat[which(table_aim_2_1$group == "OA")[1]]
+fstat_p_OA <- table_aim_2_1$Fstat_p[which(table_aim_2_1$group == "OA")[1]]
+rsq_OA <- table_aim_2_1$Rsquared[which(table_aim_2_1$group == "OA")[1]]
+rsq_adj_OA <- table_aim_2_1$Rsquared_adj[which(table_aim_2_1$group == "OA")[1]]
+
+fstat_PD <- table_aim_2_1$Fstat[which(table_aim_2_1$group == "PD")[1]]
+fstat_p_PD <- table_aim_2_1$Fstat_p[which(table_aim_2_1$group == "PD")[1]]
+rsq_PD <- table_aim_2_1$Rsquared[which(table_aim_2_1$group == "PD")[1]]
+rsq_adj_PD <- table_aim_2_1$Rsquared_adj[which(table_aim_2_1$group == "PD")[1]]
+
+oa_header <- str_glue("**Group: OA**<br>Model: R square {rsq_OA}, R square (adjusted) {rsq_adj_OA}, F {fstat_OA}, p {fstat_p_OA}")
+pd_header <- str_glue("**Group: PD**<br>Model: R square {rsq_PD}, R square (adjusted) {rsq_adj_PD}, F {fstat_PD}, p {fstat_p_PD}")
+
 table_aim_2_1 %>%
   gt() %>%
+  cols_hide(columns = c("Fstat", "Fstat_p", "Rsquared", "Rsquared_adj")) %>%
   fmt_number(
-    columns = c(included_n, DF),
-    decimals = 0
+    columns = everything(),
+    decimals = 2
   ) %>%
   fmt_number(
-    columns = -c(included_n, DF),
-    decimals = 3
+    columns = c(N, DF),
+    decimals = 0
+  ) %>%
+  fmt(
+    columns = c(p, p_adjusted),
+    fns = function(x) {
+      ifelse(x < 0.001, "<.001", sprintf("%.3f", x))
+    }
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_body(
-      rows = p_adjust < 0.05
+      rows = p_adjusted < 0.05
     )
   ) %>%
   tab_row_group(
-    label = md("**Group: OA**"),
+    label = md(oa_header),
     rows = group == "OA"
   ) %>%
   tab_row_group(
-    label = md("**Group: PD**"),
+    label = md(pd_header),
     rows = group == "PD"
   )
+
+
+fstat_OA <- table_aim_2_2$Fstat[which(table_aim_2_2$group == "OA")[1]]
+fstat_p_OA <- table_aim_2_2$Fstat_p[which(table_aim_2_2$group == "OA")[1]]
+rsq_OA <- table_aim_2_2$Rsquared[which(table_aim_2_2$group == "OA")[1]]
+rsq_adj_OA <- table_aim_2_2$Rsquared_adj[which(table_aim_2_2$group == "OA")[1]]
+
+fstat_PD <- table_aim_2_2$Fstat[which(table_aim_2_2$group == "PD")[1]]
+fstat_p_PD <- table_aim_2_2$Fstat_p[which(table_aim_2_2$group == "PD")[1]]
+rsq_PD <- table_aim_2_2$Rsquared[which(table_aim_2_2$group == "PD")[1]]
+rsq_adj_PD <- table_aim_2_2$Rsquared_adj[which(table_aim_2_2$group == "PD")[1]]
+
+oa_header <- str_glue("**Group: OA**<br>Model: R square {rsq_OA}, R square (adjusted) {rsq_adj_OA}, F {fstat_OA}, p {fstat_p_OA}")
+pd_header <- str_glue("**Group: PD**<br>Model: R square {rsq_PD}, R square (adjusted) {rsq_adj_PD}, F {fstat_PD}, p {fstat_p_PD}")
 
 table_aim_2_2 %>%
   gt() %>%
+  cols_hide(columns = c("Fstat", "Fstat_p", "Rsquared", "Rsquared_adj")) %>%
   fmt_number(
-    columns = c(included_n, DF),
-    decimals = 0
+    columns = everything(),
+    decimals = 2
   ) %>%
   fmt_number(
-    columns = -c(included_n, DF),
-    decimals = 3
+    columns = c(N, DF),
+    decimals = 0
+  ) %>%
+  fmt(
+    columns = c(p, p_adjusted),
+    fns = function(x) {
+      ifelse(x < 0.001, "<.001", sprintf("%.3f", x))
+    }
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_body(
-      rows = p_adjust < 0.05
+      rows = p_adjusted < 0.05
     )
   ) %>%
   tab_row_group(
-    label = md("**Group: OA**"),
+    label = md(oa_header),
     rows = group == "OA"
   ) %>%
   tab_row_group(
-    label = md("**Group: PD**"),
+    label = md(pd_header),
     rows = group == "PD"
   )
 
+fstat_OA <- table_aim_2_3$Fstat[which(table_aim_2_3$group == "OA")[1]]
+fstat_p_OA <- table_aim_2_3$Fstat_p[which(table_aim_2_3$group == "OA")[1]]
+rsq_OA <- table_aim_2_3$Rsquared[which(table_aim_2_3$group == "OA")[1]]
+rsq_adj_OA <- table_aim_2_3$Rsquared_adj[which(table_aim_2_3$group == "OA")[1]]
+
+fstat_PD <- table_aim_2_3$Fstat[which(table_aim_2_3$group == "PD")[1]]
+fstat_p_PD <- table_aim_2_3$Fstat_p[which(table_aim_2_3$group == "PD")[1]]
+rsq_PD <- table_aim_2_3$Rsquared[which(table_aim_2_3$group == "PD")[1]]
+rsq_adj_PD <- table_aim_2_3$Rsquared_adj[which(table_aim_2_3$group == "PD")[1]]
+
+oa_header <- str_glue("**Group: OA**<br>Model: R square {rsq_OA}, R square (adjusted) {rsq_adj_OA}, F {fstat_OA}, p {fstat_p_OA}")
+pd_header <- str_glue("**Group: PD**<br>Model: R square {rsq_PD}, R square (adjusted) {rsq_adj_PD}, F {fstat_PD}, p {fstat_p_PD}")
+
 table_aim_2_3 %>%
   gt() %>%
+  cols_hide(columns = c("Fstat", "Fstat_p", "Rsquared", "Rsquared_adj")) %>%
   fmt_number(
-    columns = c(included_n, DF),
-    decimals = 0
+    columns = everything(),
+    decimals = 2
   ) %>%
   fmt_number(
-    columns = -c(included_n, DF),
-    decimals = 3
+    columns = c(N, DF),
+    decimals = 0
+  ) %>%
+  fmt(
+    columns = c(p, p_adjusted),
+    fns = function(x) {
+      ifelse(x < 0.001, "<.001", sprintf("%.3f", x))
+    }
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_body(
-      rows = p_adjust < 0.05
+      rows = p_adjusted < 0.05
     )
   ) %>%
   tab_row_group(
-    label = md("**Group: OA**"),
+    label = md(oa_header),
     rows = group == "OA"
   ) %>%
   tab_row_group(
-    label = md("**Group: PD**"),
+    label = md(pd_header),
     rows = group == "PD"
   )
 
@@ -960,28 +1052,48 @@ plot_grid(plotlist=list(gg_point_1, gg_point_2, gg_point_3, gg_point_4), ncol=2,
 
 ```{r}
 
+fstat_OA <- table_aim_3$Fstat[which(table_aim_3$group == "OA")[1]]
+fstat_p_OA <- table_aim_3$Fstat_p[which(table_aim_3$group == "OA")[1]]
+rsq_OA <- table_aim_3$Rsquared[which(table_aim_3$group == "OA")[1]]
+rsq_adj_OA <- table_aim_3$Rsquared_adj[which(table_aim_3$group == "OA")[1]]
+
+fstat_PD <- table_aim_3$Fstat[which(table_aim_3$group == "PD")[1]]
+fstat_p_PD <- table_aim_3$Fstat_p[which(table_aim_3$group == "PD")[1]]
+rsq_PD <- table_aim_3$Rsquared[which(table_aim_3$group == "PD")[1]]
+rsq_adj_PD <- table_aim_3$Rsquared_adj[which(table_aim_3$group == "PD")[1]]
+
+oa_header <- str_glue("**Group: OA**<br>Model: R square {rsq_OA}, R square (adjusted) {rsq_adj_OA}, F {fstat_OA}, p {fstat_p_OA}")
+pd_header <- str_glue("**Group: PD**<br>Model: R square {rsq_PD}, R square (adjusted) {rsq_adj_PD}, F {fstat_PD}, p {fstat_p_PD}")
+
 table_aim_3 %>%
   gt() %>%
+  cols_hide(columns = c("Aim", "Fstat", "Fstat_p", "Rsquared", "Rsquared_adj")) %>%
   fmt_number(
-    columns = c(included_n, DF),
-    decimals = 0
+    columns = everything(),
+    decimals = 2
   ) %>%
   fmt_number(
-    columns = -c(included_n, DF),
-    decimals = 3
+    columns = c(N, DF),
+    decimals = 0
+  ) %>%
+  fmt(
+    columns = c(p, p_adjusted),
+    fns = function(x) {
+      ifelse(x < 0.001, "<.001", sprintf("%.3f", x))
+    }
   ) %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_body(
-      rows = p_adjust < 0.05
+      rows = p_adjusted < 0.05
     )
   ) %>%
   tab_row_group(
-    label = md("**Group: OA**"),
+    label = md(oa_header),
     rows = group == "OA"
   ) %>%
   tab_row_group(
-    label = md("**Group: PD**"),
+    label = md(pd_header),
     rows = group == "PD"
   )
 
