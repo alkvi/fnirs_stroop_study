@@ -78,7 +78,7 @@ How the dataset used in this study was prepared can be found in: <https://github
 | 3 | 2025-02-14 | Update aim 3 to control for education, add details on missing data |
 | 4 | 2025-02-19 | Changed correlation method in aim 3 behavioral part to Spearman (more robust), added exploratory analysis of PFC activation difference between groups, added signal quality metrics, used z-score normalization of covariates for more evenly scaled betas (does not affect statistical test values which are the same as before) |
 | 5 | 2025-04-14 | Added subject-level ROI correlation to step time variability, exploration of LEDD |
-| 6 | 2025-04-25 | Model statistics and formatting |
+| 6 | 2025-04-25 | Model statistics and formatting, filter properly for aim 1 |
 
 : Version history
 
@@ -347,22 +347,8 @@ stroop_time_subject_means_wide <- stroop_time_subject_means_wide %>%
 
 # Merge with accuracy
 as_data_wide <- merge(acc_data_wide, stroop_time_subject_means_wide, by = "subject", all = TRUE, suffixes = c("_acc", "_time"))
-
-# Add group again
 as_data_wide <- assign_group(as_data_wide, identifiers_ya, identifiers_oa, identifiers_pd)
 as_data_wide <- as_data_wide[!as_data_wide$group == 'YA', ]
-
-# Split into different groups
-all_subject_data <- merge(all_subject_data, all_gait_data, by = "subject", all = TRUE)
-all_subject_data <- merge(all_subject_data, as_data_wide[c("subject", "dt_cost_stroop_time")], by = "subject", all = TRUE)
-all_subject_data <- subset(all_subject_data, select = -c(group.y))
-names(all_subject_data)[names(all_subject_data) == 'group.x'] <- 'group'
-ya_data <- all_subject_data[all_subject_data$group == 'YA', ]
-ya_data <- ya_data[!is.na(ya_data$subject),]
-oa_data <- all_subject_data[all_subject_data$group == 'OA', ]
-oa_data <- oa_data[!is.na(oa_data$subject),]
-pd_data <- all_subject_data[all_subject_data$group == 'PD', ]
-pd_data <- pd_data[!is.na(pd_data$subject),]
 
 # Process subject ROI data
 subject_roi_data = read.csv(subject_roi_file)
@@ -378,15 +364,45 @@ subject_roi_data$Condition <- as.factor(subject_roi_data$Condition)
 subject_roi_data$st_step_time_var <- subject_roi_data$st_step_time_var * 1000
 subject_roi_data$dt_step_time_var <- subject_roi_data$dt_step_time_var * 1000
 
-# Split into groups and get variables to plot
+# Let's filter the data to only the ones with complete data for aim 1.
+# First, we which subjects have fNIRS data, intersect with gait data
+fnirs_subject_ids_oa <- read.csv("../data/subjects_aim1_oa.csv", header=FALSE, col.names=paste0("subject") )
+fnirs_subject_ids_pd <- read.csv("../data/subjects_aim1_pd.csv", header=FALSE, col.names=paste0("subject") )
+aim_1_subjects <- c(fnirs_subject_ids_oa$subject, fnirs_subject_ids_pd$subject)
+non_overlapping_subjects <- setdiff(all_subject_data$subject, aim_1_subjects)
+
+# Filter
+all_subject_data <- all_subject_data %>% filter(subject %in% aim_1_subjects)
+all_gait_data <- all_gait_data %>% filter(subject %in% aim_1_subjects)
+as_data_wide <- as_data_wide %>% filter(subject %in% aim_1_subjects)
+subject_roi_data <- subject_roi_data %>% filter(SubjectID %in% aim_1_subjects)
+
+# Split into different groups
+all_subject_data <- merge(all_subject_data, all_gait_data, by = "subject", all = TRUE)
+all_subject_data <- merge(all_subject_data, as_data_wide[c("subject", "dt_cost_stroop_time")], by = "subject", all = TRUE)
+all_subject_data <- subset(all_subject_data, select = -c(group.y))
+names(all_subject_data)[names(all_subject_data) == 'group.x'] <- 'group'
+ya_data <- all_subject_data[all_subject_data$group == 'YA', ]
+ya_data <- ya_data[!is.na(ya_data$subject),]
+oa_data <- all_subject_data[all_subject_data$group == 'OA', ]
+oa_data <- oa_data[!is.na(oa_data$subject),]
+pd_data <- all_subject_data[all_subject_data$group == 'PD', ]
+pd_data <- pd_data[!is.na(pd_data$subject),]
+
+# Split into groups and get variables to plot for subject ROI data
 grouped_dataframes <- split(subject_roi_data, subject_roi_data$group)
 data_OA <- grouped_dataframes$OA
 data_PD <- grouped_dataframes$PD
-data_oa_c2 <- data_OA %>% filter(Condition == "C2_ST_walk") %>% select(step_time_var = st_step_time_var, Beta, group)
-data_oa_c3 <- data_OA %>% filter(Condition == "C3_DT_walk") %>% select(step_time_var = dt_step_time_var, Beta, group)
-data_pd_c2 <- data_PD %>% filter(Condition == "C2_ST_walk") %>% select(step_time_var = st_step_time_var, Beta, group)
-data_pd_c3 <- data_PD %>% filter(Condition == "C3_DT_walk") %>% select(step_time_var = dt_step_time_var, Beta, group)
+data_oa_c2 <- data_OA %>% 
+  filter(Condition == "C2_ST_walk") %>% select(step_time_var = st_step_time_var, Beta, group, Condition)
+data_oa_c3 <- data_OA %>% 
+  filter(Condition == "C3_DT_walk") %>% select(step_time_var = dt_step_time_var, Beta, group, Condition)
+data_pd_c2 <- data_PD %>% 
+  filter(Condition == "C2_ST_walk") %>% select(step_time_var = st_step_time_var, Beta, group, Condition)
+data_pd_c3 <- data_PD %>% 
+  filter(Condition == "C3_DT_walk") %>% select(step_time_var = dt_step_time_var, Beta, group, Condition)
 subject_roi_data_combined <- bind_rows(data_oa_c2, data_oa_c3, data_pd_c2, data_pd_c3)
+
 
 ```
 :::
@@ -536,20 +552,27 @@ Combined with the task data in the tables above, where we can observe a signific
 dt_costs <- all_gait_data %>%
   select(starts_with("dt_cost"), subject)
 merged_data <- merge(as_data_wide, dt_costs, by = 'subject')
+merged_data$group <- factor(merged_data$group, levels=c('OA', 'PD'))
 
 # Make costs into DTE instead
 merged_data <- merged_data %>%
   mutate(across(starts_with("dt_cost"), ~ . * -1))
 
+# Get quadrant counts
 merged_data$quadrant <- with(merged_data, 
                              ifelse(dt_cost_stroop_time > 0 & dt_cost_walk_speed_protocol1 > 0, "Q1",
                              ifelse(dt_cost_stroop_time < 0 & dt_cost_walk_speed_protocol1 > 0, "Q2",
                              ifelse(dt_cost_stroop_time < 0 & dt_cost_walk_speed_protocol1 < 0, "Q3", "Q4"))))
-
 quadrant_counts <- table(merged_data$quadrant)
 
 # Convert counts to percentages
 quadrant_percentages <- round(prop.table(quadrant_counts) * 100, 1)
+
+# Count for each group
+oa_counts <- table(subset(merged_data, group == "OA")$quadrant)
+pd_counts <- table(subset(merged_data, group == "PD")$quadrant)
+oa_counts_pct <- round(prop.table(oa_counts) * 100, 1)
+pd_counts_pct <- round(prop.table(pd_counts) * 100, 1)
 
 # Create quadrant plot
 p <- ggplot(merged_data, aes(x = dt_cost_stroop_time, y = dt_cost_walk_speed_protocol1, tooltip = subject, color = group)) +
@@ -560,10 +583,10 @@ p <- ggplot(merged_data, aes(x = dt_cost_stroop_time, y = dt_cost_walk_speed_pro
   geom_quadrant_lines(xintercept = 0, yintercept = 0, linetype = "dashed", color = "black") +
   xlim(-20, 20) +
   ylim(-20, 20) +
-  annotate("text", x = 13, y = 17, label = paste("Mutual facilitation %:", quadrant_percentages["Q1"]), color = "blue", size = 5) +
-  annotate("text", x = -13, y = 17, label = paste("Motoric priority trade-off %:", quadrant_percentages["Q2"]), color = "blue", size = 5) +
-  annotate("text", x = -13, y = -17, label = paste("Mutual interference %:", quadrant_percentages["Q3"]), color = "blue", size = 5) +
-  annotate("text", x = 13, y = -17, label = paste("Cognitive priority trade-off %:", quadrant_percentages["Q4"]), color = "blue", size = 5)
+  annotate("text", x = 13, y = 17, label = paste("Mutual facilitation\nOA ", oa_counts_pct["Q1"], "%, PD ", pd_counts_pct["Q1"], "%", sep=""), color = "blue", size = 5) +
+  annotate("text", x = -13, y = 17, label = paste("Motor priority trade-off\nOA ", oa_counts_pct["Q2"], "%, PD ", pd_counts_pct["Q2"], "%", sep=""), color = "blue", size = 5) +
+  annotate("text", x = -13, y = -17, label = paste("Mutual interference\nOA ", oa_counts_pct["Q3"], "%, PD ", pd_counts_pct["Q3"], "%", sep=""), color = "blue", size = 5) +
+  annotate("text", x = 13, y = -17, label = paste("Cognitive priority trade-off\nOA ", oa_counts_pct["Q4"], "%, PD ", pd_counts_pct["Q4"], "%", sep=""), color = "blue", size = 5)
 
 # Render the plot
 p
@@ -1001,13 +1024,18 @@ Note that this is Spearman correlation instead of planned Pearson, because there
 ```{r}
 #| warning: false
 
-## TMT4 - DT cost
+# Filter away NaN, also set TMTIV/B max 300s
+pd_data <- pd_data[!is.na(pd_data$tmt_4), ]
+pd_data$tmt_4[pd_data$tmt_4 > 300] <- 300
+oa_data <- oa_data[!is.na(oa_data$tmt_4), ]
+oa_data$tmt_4[oa_data$tmt_4 > 300] <- 300
 
+## TMT4 - DT cost
 gg_point_1 = ggplot(data = oa_data, aes(x = tmt_4, y = dt_cost_walk_speed_protocol1)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color="red") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   stat_cor(label.y = 14, method = corr_method, size = 4) +
-  coord_cartesian(xlim =c(20,235), ylim = c(-10, 15)) +
+  coord_cartesian(xlim =c(20,300), ylim = c(-10, 15)) +
   labs(x = "TMT-B", y = "DT cost speed (%)", title = "OA") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
@@ -1016,18 +1044,17 @@ gg_point_2 = ggplot(data = pd_data, aes(x = tmt_4, y = dt_cost_walk_speed_protoc
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color = "green") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   stat_cor(label.y = 14, method = corr_method, size = 4) +
-  coord_cartesian(xlim =c(20,235), ylim = c(-10, 15)) +
+  coord_cartesian(xlim =c(20,300), ylim = c(-10, 15)) +
   labs(x = "TMT-B", y = "DT cost speed (%)", title = "PD") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
 
 ## TMT4 - stoop DT cost
-
 gg_point_3 = ggplot(data = oa_data, aes(x = tmt_4, y = dt_cost_stroop_time)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color="red") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   stat_cor(label.y = 14, method = corr_method, size = 4) +
-  coord_cartesian(xlim =c(20,235), ylim = c(-10, 15)) +
+  coord_cartesian(xlim =c(20,300), ylim = c(-25, 15)) +
   labs(x = "TMT-B", y = "DT cost stroop (%)", title = "OA") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
@@ -1036,13 +1063,22 @@ gg_point_4 = ggplot(data = pd_data, aes(x = tmt_4, y = dt_cost_stroop_time)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color = "green") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   stat_cor(label.y = 14, method = corr_method, size = 4) +
-  coord_cartesian(xlim =c(20,235), ylim = c(-10, 15)) +
+  coord_cartesian(xlim =c(20,300), ylim = c(-25, 15)) +
   labs(x = "TMT-B", y = "DT cost stroop (%)", title = "PD") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
 
+# Combine plots with labels
+combined_plot <- plot_grid(
+  gg_point_1 + labs(tag = "a"),
+  gg_point_2 + labs(tag = "b"),
+  gg_point_3 + labs(tag = "c"),
+  gg_point_4 + labs(tag = "d"),
+  ncol = 2, nrow = 2
+)
 
-plot_grid(plotlist=list(gg_point_1, gg_point_2, gg_point_3, gg_point_4), ncol=2, nrow=2)
+# Print the combined plot
+print(combined_plot)
 
 
 ```

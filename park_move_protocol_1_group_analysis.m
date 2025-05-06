@@ -182,8 +182,8 @@ ya_idx = strcmpi(demographics.group,'YA');
 oa_idx = strcmpi(demographics.group,'OA');
 pd_idx = strcmpi(demographics.group,'PD');
 
-% Keep all subjects
-nan_idx = logical(zeros(height(demographics),1));
+% Filter for aim 1
+nan_idx = isnan(demographics.st_step_time_var);
 
 % Only YA
 selected_idx = zeros(size(SubjStats,1),1);
