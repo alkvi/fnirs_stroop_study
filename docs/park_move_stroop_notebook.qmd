@@ -63,7 +63,9 @@ To provide transparent and systematic support for the findings of the study, thi
 
 -   Model validation and robustness analyses
 
-This document is stored on GitHub pages: <https://alkvi.github.io/fnirs_stroop_study/>
+This document is stored on GitHub pages: <https://alkvi.github.io/fnirs_stroop_study/> 
+
+The document is built from the project's GitHub repository where all code is also contained: <https://github.com/alkvi/fnirs_stroop_study>
 
 Version 1 was stored at OSF: <https://osf.io/m7tx6/>
 
