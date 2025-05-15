@@ -13,6 +13,7 @@ subjstats_file = "../Park-MOVE_fnirs_dataset_v2/mat_files/SubjStats_setup_1_" + 
 results_file = "data/results_table_" + hemo_measure + "_protocol_1.csv";
 results_file_contrast = "data/results_table_" + hemo_measure + "_protocol_1_contrast.csv";
 results_file_ledd = "data/results_table_" + hemo_measure + "_protocol_1_ledd.csv";
+results_file_group_diff = "data/results_table_" + hemo_measure + "_protocol_1_group_diff.csv";
 folder_figures = "figures";
 folder_contrast = "figures";
 
@@ -653,6 +654,11 @@ job.formula = formula_diff;
 job.dummyCoding = 'full';
 job.include_diagnostics = true;
 GroupStats_diff = job.run(SubjStats_diff);
+
+% Save results
+group_diff_table = GroupStats_diff.table;
+group_diff_table(:,[12,13]) = [];
+writetable(group_diff_table, results_file_group_diff)
 
 % Draw some figures.
 GroupStats_diff.probe.defaultdrawfcn='3D mesh (frontal)';

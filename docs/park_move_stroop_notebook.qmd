@@ -864,7 +864,7 @@ ggplot(subject_roi_data_combined, aes(x = step_time_var, y = Beta)) +
   geom_point() +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   coord_cartesian(xlim = c(0, 100), ylim = c(-6, 15)) +
-  labs(x = "Step Time Variability (ms)", y = "Beta", title = "Correlation between Beta and Step Time Var") +
+  labs(x = "Step Time Variability (ms)", y = "Beta", title = "Correlation between beta and step time variability") +
   stat_cor(label.y = 11) +
   theme_light() +
   theme(text = element_text(size = 20), axis.text.y = element_text(size = 20), plot.title = element_text(hjust = 0.5)) +
@@ -1359,5 +1359,9 @@ quality_data %>%
   )
   
 ```
+
+# Manuscript
+
+Finished manuscript will be linked here when ready.
 
 # References
