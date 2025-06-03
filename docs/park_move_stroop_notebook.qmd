@@ -81,6 +81,7 @@ How the dataset used in this study was prepared can be found in: <https://github
 | 4 | 2025-02-19 | Changed correlation method in aim 3 behavioral part to Spearman (more robust), added exploratory analysis of PFC activation difference between groups, added signal quality metrics, used z-score normalization of covariates for more evenly scaled betas (does not affect statistical test values which are the same as before) |
 | 5 | 2025-04-14 | Added subject-level ROI correlation to step time variability, exploration of LEDD |
 | 6 | 2025-04-25 | Model statistics and formatting, filter properly for aim 1 |
+| 7 | 2025-06-03 | Added extra statistics and analysis of UPDRS and LEDD data. Some formatting in figures updated. |
 
 : Version history
 
@@ -578,8 +579,8 @@ pd_counts_pct <- round(prop.table(pd_counts) * 100, 1)
 
 # Create quadrant plot
 p <- ggplot(merged_data, aes(x = dt_cost_stroop_time, y = dt_cost_walk_speed_protocol1, tooltip = subject, color = group)) +
-  geom_point_interactive() +
-  labs(x = 'DTE stroop time (%)', y = 'DTE walk speed (%)') +
+  geom_point_interactive(size = 3) +
+  labs(x = 'DTE stroop time (%)', y = 'DTE walking speed (%)') +
   theme_minimal() +
   theme(text = element_text(size = 14)) +  # Increase text size
   geom_quadrant_lines(xintercept = 0, yintercept = 0, linetype = "dashed", color = "black") +
@@ -867,7 +868,7 @@ ggplot(subject_roi_data_combined, aes(x = step_time_var, y = Beta)) +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   coord_cartesian(xlim = c(0, 100), ylim = c(-6, 15)) +
   labs(x = "Step Time Variability (ms)", y = "Beta", title = "Correlation between beta and step time variability") +
-  stat_cor(label.y = 11) +
+  stat_correlation(small.r = TRUE, small.p = TRUE, use_label("R", "P"), label.y=0.8) +
   theme_light() +
   theme(text = element_text(size = 20), axis.text.y = element_text(size = 20), plot.title = element_text(hjust = 0.5)) +
   facet_wrap(~ group)
@@ -1036,37 +1037,43 @@ oa_data$tmt_4[oa_data$tmt_4 > 300] <- 300
 gg_point_1 = ggplot(data = oa_data, aes(x = tmt_4, y = dt_cost_walk_speed_protocol1)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color="red") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
-  stat_cor(label.y = 14, method = corr_method, size = 4) +
+  stat_correlation(method=corr_method, small.r=TRUE, small.p=TRUE, use_label("R", "P"), label.y=1) +
   coord_cartesian(xlim =c(20,300), ylim = c(-10, 15)) +
-  labs(x = "TMT-B", y = "DT cost speed (%)", title = "OA") +
+  labs(x = "TMT IV", y = "DT cost walking speed (%)", title = "OA") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
 
 gg_point_2 = ggplot(data = pd_data, aes(x = tmt_4, y = dt_cost_walk_speed_protocol1)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color = "green") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
-  stat_cor(label.y = 14, method = corr_method, size = 4) +
+  stat_correlation(method=corr_method, small.r=TRUE, small.p=TRUE, use_label("R", "P"), label.y=1) +
   coord_cartesian(xlim =c(20,300), ylim = c(-10, 15)) +
-  labs(x = "TMT-B", y = "DT cost speed (%)", title = "PD") +
+  labs(x = "TMT IV", y = "DT cost walking speed (%)", title = "PD") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
 
 ## TMT4 - stoop DT cost
+# stat_correlation outputs pipe symbol for gg_point_3 so do it manually
+cor_result <- cor.test(oa_data$tmt_4, oa_data$dt_cost_stroop_time, method = corr_method)
+r_value <- round(cor_result$estimate, 2)
+p_value <- cor_result$p.value
+p_label <- ifelse(p_value < 0.001, "< 0.001", paste0("= ", round(p_value, 3)))
+custom_label <- paste0("ρ = ", r_value, ", P ", p_label)
 gg_point_3 = ggplot(data = oa_data, aes(x = tmt_4, y = dt_cost_stroop_time)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color="red") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
-  stat_cor(label.y = 14, method = corr_method, size = 4) +
+  annotate("text", x = 70, y = 10, label = custom_label, parse=FALSE) +
   coord_cartesian(xlim =c(20,300), ylim = c(-25, 15)) +
-  labs(x = "TMT-B", y = "DT cost stroop (%)", title = "OA") +
+  labs(x = "TMT IV", y = "DT cost stroop (%)", title = "OA") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
 
 gg_point_4 = ggplot(data = pd_data, aes(x = tmt_4, y = dt_cost_stroop_time)) +
   geom_point_interactive(aes(tooltip = subject, data_id = subject), color = "green") +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
-  stat_cor(label.y = 14, method = corr_method, size = 4) +
+  stat_correlation(method=corr_method, small.r=TRUE, small.p=TRUE, use_label("R", "P"), label.y=1) +
   coord_cartesian(xlim =c(20,300), ylim = c(-25, 15)) +
-  labs(x = "TMT-B", y = "DT cost stroop (%)", title = "PD") +
+  labs(x = "TMT IV", y = "DT cost stroop (%)", title = "PD") +
   geom_hline(yintercept=0, linetype="dashed", color = "black") +
   theme_minimal()
 
@@ -1320,6 +1327,28 @@ plot_grid(plotlist=list(plot1, plot2), nrow=2)
   
 ```
 
+# UPDRS and LEDD, table
+
+```{r, results='asis'}
+
+updrs_data <- assign_group(updrs_data, identifiers_ya, identifiers_oa, identifiers_pd)
+updrs_data$mdsupdrs3_hy <- factor(updrs_data$mdsupdrs3_hy, levels = 1:4)
+updrs_data <- updrs_data %>% filter(subject %in% aim_1_subjects)
+
+labels(updrs_data)  <- c(
+  updrs_3_total = "MDS-UPDRS III",
+  mdsupdrs3_hy = "HY")
+
+tab_disease_1 <- tableby(group ~ updrs_3_total + mdsupdrs3_hy,data=updrs_data, control=mycontrols)
+summary(tab_disease_1, title = "MDS-UPDRS data")
+
+ledd_updrs <- ledd_updrs %>% filter(subject %in% aim_1_subjects)
+ledd_updrs <- ledd_updrs %>% filter(!is.na(led_total))
+tab_disease_2 <- tableby(group ~ led_total, data=ledd_updrs, control=mycontrols)
+summary(tab_disease_2, title = "LEDD data")
+
+
+```
 
 # Signal quality
 
