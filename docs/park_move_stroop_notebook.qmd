@@ -1,6 +1,6 @@
 ---
 title: "fNIRS Parkinson DT study - notebook"
-bibliography: C:/pandoc/zotero_lib.bib
+bibliography: /Users/alexander.kvist/Zotero/zotero_library.bib
 format: 
   html:
     code-fold: true
@@ -87,7 +87,7 @@ How the dataset used in this study was prepared can be found in: <https://github
 
 # Notebook rationale
 
-Since we already have a collected dataset, on which we have already run analyses (albeit different analyses), we can take inspiration from Daniël Lakens, for example in [@lakens2024]:
+Since we already have a collected dataset, on which we have already run analyses (albeit different analyses), we can take inspiration from Daniël Lakens, for example in [@lakens2024a]:
 
 > We propose that the ‘open lab notebook’ terminology is more appropriate for studies where data already exist. \[…\] Open lab notebooks focus on robustness analyses, sensitivity analyses, and triangulation to provide support for claims (Munafò and Smith 2018).
 
@@ -1393,6 +1393,8 @@ quality_data %>%
 
 # Manuscript
 
-Finished manuscript will be linked here when ready.
+Finished manuscript is located in the Journal of NeuroEngineering and Rehabilitation (JNER):
+
+<https://doi.org/10.1186/s12984-025-01864-w>
 
 # References

@@ -8,3 +8,4 @@ etc
 docs/*.docx
 docs/manuscript.qmd
 figures
+.DS_Store
